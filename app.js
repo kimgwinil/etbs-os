@@ -178,6 +178,39 @@ const commandTemplates = {
   attach: ["파일 첨부", "파일 첨부 요청을 기록했습니다.", "첨부파일은 마스킹, 다운로드 권한, 보존기간 검토 대상입니다."]
 };
 
+const formConfigs = {
+  "customer-create": [
+    ["customerName", "고객사명", "text", "예: 신규복지테크", "신규복지테크"],
+    ["manager", "담당 AM", "text", "예: AM 김권일", "AM 김권일"],
+    ["contract", "계약 상태", "text", "예: 신규 온보딩", "신규 온보딩"],
+    ["issue", "최근 이슈", "text", "예: 초기 계약 검토", "초기 계약 검토"],
+    ["margin", "마진율", "text", "예: 7.5%", "7.5%"]
+  ],
+  "product-approval": [
+    ["productName", "상품명", "text", "예: 선택복지 상품 101", "선택복지 상품 101"],
+    ["supplier", "공급사", "text", "예: 신규공급사", "신규공급사"],
+    ["customerName", "연결 고객사", "text", "예: 한빛전자", "한빛전자"],
+    ["margin", "마진율", "text", "예: PM 승인 필요", "PM 승인 필요"],
+    ["stock", "재고", "text", "예: 재고 300", "재고 300"]
+  ],
+  "pipeline-create": [
+    ["opportunityName", "기회/기획명", "text", "예: 2026 복지몰 확대 제안", "2026 복지몰 확대 제안"],
+    ["stage", "단계", "text", "예: 리드", "리드"],
+    ["amount", "예상 금액", "text", "예: 2.4억", "2.4억"],
+    ["nextAction", "다음 액션", "text", "예: 제안서 발송", "제안서 발송"]
+  ],
+  "employee-create": [
+    ["employeeName", "이름", "text", "예: 홍길동", "홍길동"],
+    ["customerName", "소속 고객사", "text", "예: 한빛전자", "한빛전자"],
+    ["team", "조직", "text", "예: 운영팀", "운영팀"],
+    ["startDate", "입사일", "date", "", "2026-06-07"],
+    ["approvalRole", "결재권한", "text", "예: 운영 처리자", "운영 처리자"]
+  ]
+};
+
+let activeCommand = null;
+let activeAuditId = null;
+
 function renderNav() {
   document.querySelector("#navList").innerHTML = navItems
     .map(
@@ -435,6 +468,8 @@ function openCommandPanel(command, label = "") {
   const template = commandTemplates[command] || ["작업 실행", "선택한 작업을 실행했습니다.", "테스트 데이터 기준으로 실행 결과를 표시합니다."];
   const auditId = `AUD-ACT-${Date.now().toString().slice(-6)}`;
   const title = label && label !== template[0] ? `${template[0]} · ${label}` : template[0];
+  activeCommand = command;
+  activeAuditId = auditId;
   document.querySelector("#commandBadge").textContent = auditId;
   document.querySelector("#commandTitle").textContent = title;
   document.querySelector("#commandDescription").textContent = template[1];
@@ -446,6 +481,7 @@ function openCommandPanel(command, label = "") {
     <div><span>권한 기준</span><strong>RBAC / Tenant Scope</strong></div>
     <div><span>승인 상태</span><strong>필요 시 PM 승인 필요</strong></div>
   `;
+  renderCommandForm(command);
   document.querySelector("#commandNotice").textContent = template[2];
   document.querySelector("#commandPanel").classList.add("active");
   auditRows.unshift([auditId, template[0], "현재 사용자", label || "ETBS OS", "테스트 실행", "권한/로그 확인"]);
@@ -456,6 +492,113 @@ function openCommandPanel(command, label = "") {
 
 function closeCommandPanel() {
   document.querySelector("#commandPanel").classList.remove("active");
+}
+
+function renderCommandForm(command) {
+  const fields = formConfigs[command] || [];
+  const form = document.querySelector("#commandForm");
+  const saveButton = document.querySelector("#commandSave");
+  const cancelButton = document.querySelector("#commandCancel");
+
+  form.innerHTML = fields
+    .map(
+      ([name, label, type, placeholder, defaultValue]) => `
+        <label>
+          <span>${label}</span>
+          <input name="${name}" type="${type}" placeholder="${placeholder}" value="${defaultValue || ""}" />
+        </label>
+      `
+    )
+    .join("");
+
+  const hasForm = fields.length > 0;
+  form.classList.toggle("hidden", !hasForm);
+  saveButton.classList.toggle("hidden", !hasForm);
+  cancelButton.textContent = hasForm ? "취소" : "닫기";
+}
+
+function getFormValues() {
+  return Object.fromEntries(new FormData(document.querySelector("#commandForm")).entries());
+}
+
+function saveCommandForm() {
+  if (!formConfigs[activeCommand]) {
+    closeCommandPanel();
+    return;
+  }
+
+  const values = getFormValues();
+  if (Object.values(values).some((value) => !String(value).trim())) {
+    showToast("필수 항목을 모두 입력해야 저장할 수 있습니다.");
+    return;
+  }
+
+  if (activeCommand === "customer-create") saveCustomer(values);
+  if (activeCommand === "product-approval") saveProduct(values);
+  if (activeCommand === "pipeline-create") savePipeline(values);
+  if (activeCommand === "employee-create") saveEmployee(values);
+
+  auditRows.unshift([activeAuditId, "등록 저장", "현재 사용자", Object.values(values)[0], "저장 완료", "로컬 샘플 데이터"]);
+  auditRows.splice(20);
+  renderAudit();
+  document.querySelector("#commandDescription").textContent = "입력 항목을 저장하고 관련 목록을 갱신했습니다.";
+  document.querySelector("#commandNotice").textContent = "저장 완료: 실제 운영 반영 전 승인/권한/감사 정책 연결이 필요합니다.";
+  showToast("입력 항목을 저장했습니다.");
+}
+
+function saveCustomer(values) {
+  customers.unshift({
+    id: padId("CUS", customers.length + 1),
+    name: values.customerName,
+    tenant: "client_company",
+    contract: values.contract,
+    manager: values.manager,
+    margin: values.margin,
+    issue: values.issue,
+    status: "정상",
+    employeeCount: 0,
+    productCount: 0
+  });
+  renderDashboard();
+  renderCustomers();
+}
+
+function saveProduct(values) {
+  products.unshift([
+    values.productName,
+    values.supplier,
+    values.customerName,
+    "승인대기",
+    values.margin,
+    "승인 요청",
+    values.stock,
+    activeAuditId
+  ]);
+  renderDashboard();
+  renderProducts();
+}
+
+function savePipeline(values) {
+  const targetStage = pipeline.find(([stage]) => stage === values.stage) || pipeline[0];
+  targetStage[3].unshift(values.opportunityName);
+  targetStage[1] = `${targetStage[3].length}건`;
+  targetStage[2] = values.amount;
+  renderPipeline();
+}
+
+function saveEmployee(values) {
+  employees.unshift([
+    padId("EMP", employees.length + 1),
+    values.employeeName,
+    values.customerName,
+    values.team,
+    "재직",
+    values.startDate,
+    values.approvalRole,
+    "정상"
+  ]);
+  renderDashboard();
+  renderEmployees();
 }
 
 document.addEventListener("click", (event) => {
@@ -474,6 +617,8 @@ document.addEventListener("click", (event) => {
   if (event.target.closest("#attachButton")) openCommandPanel("attach", "직원 채팅방 첨부파일");
 
   if (event.target.closest("#commandClose")) closeCommandPanel();
+  if (event.target.closest("#commandCancel")) closeCommandPanel();
+  if (event.target.closest("#commandSave")) saveCommandForm();
 
   const commandTarget = event.target.closest("[data-command]");
   if (commandTarget) {

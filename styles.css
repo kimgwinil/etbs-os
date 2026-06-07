@@ -901,6 +901,31 @@ input {
   font-size: 12px;
 }
 
+.command-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.command-form label span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.command-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.hidden {
+  display: none !important;
+}
+
 .toast {
   bottom: 156px;
 }
