@@ -10,13 +10,89 @@ const navItems = [
   ["audit", "보안/감사", "◷"]
 ];
 
+const companyPrefixes = ["한빛", "동서", "서울", "푸른", "넥스트", "브라이트", "에이치", "청담", "동부", "하나", "미래", "세종", "대한", "우진", "케이", "더웰", "가온", "라온", "비전", "코어"];
+const companySuffixes = ["전자", "바이오", "제약", "식품", "모빌리티", "랩", "케어", "교육", "물류", "푸드", "테크", "리테일", "건설", "서비스", "금융", "헬스", "미디어", "솔루션", "에너지", "커머스"];
+const productCategories = ["복지 포인트", "온누리 모바일권", "건강검진", "도서 쿠폰", "선물세트", "여행 바우처", "교육 수강권", "식대 포인트", "문화상품권", "의료비 지원"];
+const suppliers = ["복지포인트", "온누리 API", "케어파트너", "그린문고", "모두복지몰", "트래블웰", "러닝허브", "푸드링크", "컬처넷", "메디서포트"];
+const teams = ["정산팀", "운영팀", "CS팀", "상품팀", "영업팀", "HR팀", "보안팀"];
+const roles = ["정산 승인자", "운영 처리자", "개인정보 제한", "상품 승인자", "AM", "결재권한 관리자", "접근로그 감사자"];
+const familyNames = ["김", "박", "이", "최", "정", "강", "조", "윤", "장", "임"];
+const givenNames = ["서연", "지훈", "도윤", "민재", "하린", "나은", "윤서", "도현", "서진", "지우"];
+const statuses = ["정상", "주의", "개선"];
+const contracts = ["운영중", "갱신 30일 전", "갱신 74일 전", "계약 검토", "신규 온보딩", "조건 재협상"];
+
+function padId(prefix, index) {
+  return `${prefix}-${String(index).padStart(3, "0")}`;
+}
+
+function makeCustomer(index) {
+  const prefix = companyPrefixes[index % companyPrefixes.length];
+  const suffix = companySuffixes[Math.floor(index / companyPrefixes.length) % companySuffixes.length];
+  const status = statuses[index % statuses.length];
+  const margin = (3.1 + ((index * 7) % 72) / 10).toFixed(1);
+  return {
+    id: padId("CUS", index + 1),
+    name: `${prefix}${suffix}`,
+    tenant: "client_company",
+    contract: contracts[index % contracts.length],
+    manager: `AM ${familyNames[index % familyNames.length]}${givenNames[(index + 5) % givenNames.length]}`,
+    margin: `${margin}%`,
+    issue: ["정산 증적 보완", "배송 지연 증가", "SLA 위험", "상품 승인 대기", "권한 검토 필요"][index % 5],
+    status,
+    employeeCount: 10 + ((index * 13) % 240),
+    productCount: 2 + (index % 7)
+  };
+}
+
+function makeProduct(index) {
+  const customer = customers[index % customers.length];
+  const category = productCategories[index % productCategories.length];
+  const supplier = suppliers[index % suppliers.length];
+  const marginValue = 3.5 + ((index * 11) % 65) / 10;
+  const approvalState = index % 11 === 0 ? "PM 승인 필요" : index % 7 === 0 ? "승인대기" : index % 13 === 0 ? "중지검토" : "판매중";
+  const signal = index % 10 === 0 ? "배송 지연" : index % 8 === 0 ? "재고 위험" : index % 6 === 0 ? "저마진" : "정상";
+  return [
+    `${category} ${String(index + 1).padStart(2, "0")}`,
+    supplier,
+    customer.name,
+    approvalState,
+    approvalState === "PM 승인 필요" ? "PM 승인 필요" : `${marginValue.toFixed(1)}%`,
+    signal,
+    `재고 ${120 + ((index * 19) % 880)}`,
+    `AUD-PROD-${String(1400 + index).padStart(4, "0")}`
+  ];
+}
+
+function makeEmployee(index) {
+  const customer = customers[index % customers.length];
+  const team = teams[index % teams.length];
+  const name = `${familyNames[index % familyNames.length]}${givenNames[index % givenNames.length]}`;
+  const employmentStatus = index % 17 === 0 ? "퇴사예정" : index % 13 === 0 ? "입사예정" : "재직";
+  const date = `202${index % 6}-${String((index % 12) + 1).padStart(2, "0")}-${String((index % 27) + 1).padStart(2, "0")}`;
+  const securityState = employmentStatus === "퇴사예정" ? "권한 회수 예약" : index % 9 === 0 ? "열람 사유 필요" : "정상";
+  return [
+    padId("EMP", index + 1),
+    name,
+    customer.name,
+    team,
+    employmentStatus,
+    date,
+    roles[index % roles.length],
+    securityState
+  ];
+}
+
+const customers = Array.from({ length: 100 }, (_, index) => makeCustomer(index));
+const products = Array.from({ length: 100 }, (_, index) => makeProduct(index));
+const employees = Array.from({ length: 50 }, (_, index) => makeEmployee(index));
+
 const dashboardMetrics = [
-  ["월 매출", "18.4억", "+7.2%", "positive"],
-  ["마진율", "6.1%", "PM 승인 필요", "warning"],
-  ["처리 업무", "641건", "전월 대비 +18%", "positive"],
+  ["고객사", `${customers.length}개`, "테스트 고객정보", "positive"],
+  ["판매상품", `${products.length}개`, "고객사/공급사 연결", "neutral"],
+  ["임직원", `${employees.length}명`, "마스킹 테스트 데이터", "positive"],
   ["SLA 초과", "7건", "즉시 조치", "danger"],
   ["배송 지연", "14건", "입출고 확인", "warning"],
-  ["파이프라인", "42.8억", "계약검토 9건", "neutral"]
+  ["월 매출", "18.4억", "산식 PM 승인 필요", "warning"]
 ];
 
 const workloadBars = [
@@ -28,57 +104,11 @@ const workloadBars = [
 ];
 
 const dashboardActions = [
-  ["SLA 초과 고객사 3곳", "동서바이오, 한빛전자, 서울제약 업무 재배정 필요", "danger"],
+  ["테스트 데이터 연결 완료", "고객 100개, 판매상품 100개, 임직원 50명이 고객사 기준으로 연결됨", "neutral"],
+  ["SLA 초과 고객사 3곳", `${customers[1].name}, ${customers[0].name}, ${customers[2].name} 업무 재배정 필요`, "danger"],
   ["저마진 상품군", "배송 예외율이 높은 복지몰 상품 마진 재검토", "warning"],
   ["승인 대기", "고금액 정산 4건과 결재권한 변경 2건", "neutral"],
   ["PM 승인 필요", "개인정보/민감정보 처리범위와 AI 자동응답 정책", "warning"]
-];
-
-const customers = [
-  {
-    name: "한빛전자",
-    tenant: "client_company",
-    contract: "갱신 74일 전",
-    manager: "AM 김나은",
-    margin: "4.6%",
-    issue: "정산 증적 보완",
-    status: "주의"
-  },
-  {
-    name: "동서바이오",
-    tenant: "client_company",
-    contract: "운영중",
-    manager: "AM 최윤서",
-    margin: "3.1%",
-    issue: "배송 지연 증가",
-    status: "개선"
-  },
-  {
-    name: "서울제약",
-    tenant: "client_company",
-    contract: "계약 검토",
-    manager: "AM 박도현",
-    margin: "9.2%",
-    issue: "SLA 위험",
-    status: "정상"
-  },
-  {
-    name: "푸른식품",
-    tenant: "client_company",
-    contract: "운영중",
-    manager: "AM 이서진",
-    margin: "7.8%",
-    issue: "상품 승인 대기",
-    status: "정상"
-  }
-];
-
-const products = [
-  ["복지 포인트 패키지", "복지포인트", "판매중", "8.4%", "정상", "AUD-PROD-1041"],
-  ["온누리 모바일권", "온누리 API", "승인대기", "PM 승인 필요", "연동 검토", "AUD-PROD-1042"],
-  ["건강검진 제휴권", "케어파트너", "판매중", "6.9%", "재고 위험", "AUD-PROD-1043"],
-  ["도서 복지몰 쿠폰", "그린문고", "중지검토", "3.8%", "저마진", "AUD-PROD-1044"],
-  ["임직원 선물세트", "모두복지몰", "판매중", "7.1%", "배송 지연", "AUD-PROD-1045"]
 ];
 
 const logistics = {
@@ -101,25 +131,17 @@ const logistics = {
 };
 
 const inventoryRisks = [
-  ["건강검진 제휴권", "입고 검수 지연으로 SLA 위험", "warning"],
-  ["임직원 선물세트", "배송 지연 14건, 운송사 확인 필요", "danger"],
-  ["온누리 모바일권", "외부 API 전송 항목 PM 승인 필요", "warning"]
+  [products[2][0], "입고 검수 지연으로 SLA 위험", "warning"],
+  [products[4][0], "배송 지연 14건, 운송사 확인 필요", "danger"],
+  [products[1][0], "외부 API 전송 항목 PM 승인 필요", "warning"]
 ];
 
 const pipeline = [
-  ["리드", "6건", "5.2억", ["에이치케어", "청담교육"]],
-  ["제안", "8건", "9.8억", ["동부물류", "하나푸드"]],
-  ["계약검토", "9건", "18.1억", ["서울제약", "브라이트랩"]],
-  ["수주", "4건", "9.7억", ["넥스트모빌리티"]],
+  ["리드", "6건", "5.2억", [customers[6].name, customers[7].name]],
+  ["제안", "8건", "9.8억", [customers[8].name, customers[9].name]],
+  ["계약검토", "9건", "18.1억", [customers[2].name, customers[5].name]],
+  ["수주", "4건", "9.7억", [customers[4].name]],
   ["실패/보류", "3건", "1.4억", ["저마진 조건"]]
-];
-
-const employees = [
-  ["김서연", "정산팀", "재직", "2021-04-12", "정산 승인자", "정상"],
-  ["박지훈", "운영팀", "재직", "2022-11-03", "운영 처리자", "정상"],
-  ["이도윤", "CS팀", "재직", "2023-06-19", "개인정보 제한", "열람 사유 필요"],
-  ["최민재", "상품팀", "입사예정", "2026-06-17", "미지정", "결재권한 지정 필요"],
-  ["정하린", "영업팀", "퇴사예정", "2026-06-28", "AM", "권한 회수 예약"]
 ];
 
 const aiMessages = [
@@ -203,18 +225,23 @@ function renderCustomers() {
 
 function renderCustomerDetail(name) {
   const customer = customers.find((item) => item.name === name) || customers[0];
+  const linkedProducts = products.filter((product) => product[2] === customer.name).length;
+  const linkedEmployees = employees.filter((employee) => employee[2] === customer.name).length;
   document.querySelector("#customerDetail").innerHTML = `
     <div class="detail-header">
       <span class="status-pill">${customer.tenant}</span>
       <h2>${customer.name}</h2>
-      <p>${customer.issue} · ${customer.status}</p>
+      <p>${customer.id} · ${customer.issue} · ${customer.status}</p>
     </div>
     <div class="detail-grid">
       <div><span>담당자</span><strong>${customer.manager}</strong></div>
       <div><span>계약 상태</span><strong>${customer.contract}</strong></div>
       <div><span>마진율</span><strong>${customer.margin}</strong></div>
+      <div><span>연결 상품</span><strong>${linkedProducts}개</strong></div>
+      <div><span>연결 임직원</span><strong>${linkedEmployees}명</strong></div>
+      <div><span>고객 임직원 규모</span><strong>${customer.employeeCount}명</strong></div>
       <div><span>개인정보</span><strong>마스킹 기본</strong></div>
-      <div><span>접근로그</span><strong>AUD-CUS-2201</strong></div>
+      <div><span>접근로그</span><strong>AUD-CUS-${customer.id.split("-")[1]}</strong></div>
       <div><span>승인</span><strong>상세 열람 사유 필요</strong></div>
     </div>
     <div class="notice">고객사 테넌트 범위 밖 상세 조회와 연락처 원문 검색은 PM 승인 필요입니다.</div>
@@ -222,7 +249,7 @@ function renderCustomerDetail(name) {
 }
 
 function renderProducts() {
-  renderDataTable("#productTable", ["상품명", "공급사", "상태", "마진", "운영 신호", "감사로그"], products);
+  renderDataTable("#productTable", ["상품명", "공급사", "연결 고객사", "상태", "마진", "운영 신호", "재고", "감사로그"], products);
 }
 
 function renderLogistics() {
@@ -307,25 +334,26 @@ function renderMessage([role, message]) {
 }
 
 function renderEmployees() {
-  renderDataTable("#employeeTable", ["이름", "조직", "상태", "입사/퇴사일", "결재권한", "보안 상태"], employees);
+  renderDataTable("#employeeTable", ["직원 ID", "이름", "고객사", "조직", "상태", "입사/퇴사일", "결재권한", "보안 상태"], employees);
   renderEmployeeDetail(employees[0][0]);
 }
 
-function renderEmployeeDetail(name) {
-  const employee = employees.find((item) => item[0] === name) || employees[0];
+function renderEmployeeDetail(employeeId) {
+  const employee = employees.find((item) => item[0] === employeeId) || employees[0];
   document.querySelector("#employeeDetail").innerHTML = `
     <div class="detail-header">
       <span class="status-pill">PII Protected</span>
-      <h2>${employee[0]}</h2>
-      <p>${employee[1]} · ${employee[2]}</p>
+      <h2>${employee[1]}</h2>
+      <p>${employee[0]} · ${employee[2]} · ${employee[3]}</p>
     </div>
     <div class="detail-grid">
       <div><span>신상명세</span><strong>마스킹 표시</strong></div>
       <div><span>인적사항</span><strong>상세 열람 사유 필요</strong></div>
-      <div><span>입사/퇴사</span><strong>${employee[3]}</strong></div>
-      <div><span>결재권한</span><strong>${employee[4]}</strong></div>
-      <div><span>권한 회수</span><strong>${employee[5]}</strong></div>
-      <div><span>감사로그</span><strong>AUD-HR-3310</strong></div>
+      <div><span>입사/퇴사</span><strong>${employee[5]}</strong></div>
+      <div><span>재직 상태</span><strong>${employee[4]}</strong></div>
+      <div><span>결재권한</span><strong>${employee[6]}</strong></div>
+      <div><span>권한 회수</span><strong>${employee[7]}</strong></div>
+      <div><span>감사로그</span><strong>AUD-HR-${employee[0].split("-")[1]}</strong></div>
     </div>
     <div class="notice">신상명세 및 민감정보 항목, 보존기간, 퇴사자 데이터 처리범위는 PM 승인 필요입니다.</div>
   `;
