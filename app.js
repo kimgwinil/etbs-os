@@ -142,6 +142,20 @@ const pipeline = [
   ["실패/보류", "3건", "1.4억", ["저마진 조건"]]
 ];
 
+const monthLabels = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
+const salesPeople = ["김나은", "최윤서", "박도현", "이서진", "김권일"];
+
+const salesPerformance = salesPeople.map((name, personIndex) => ({
+  id: padId("SALE", personIndex + 1),
+  name,
+  team: "영업팀",
+  monthly: monthLabels.map((month, monthIndex) => {
+    const target = 75000000 + personIndex * 12000000 + monthIndex * 3500000;
+    const actual = target - 9000000 + ((personIndex + monthIndex) % 5) * 4500000;
+    return { month, target, actual };
+  })
+}));
+
 const aiMessages = [
   ["assistant", "오늘 SLA 초과 7건 중 배송/입출고 4건, 정산 2건, CS 1건입니다. 개인정보 원문 없이 집계 기준으로 요약했습니다."],
   ["user", "저마진 고객사 원인을 알려줘"],
@@ -342,6 +356,102 @@ function renderPipeline() {
       `
     )
     .join("");
+  renderSalesPerformance();
+}
+
+function formatWon(value) {
+  return `${Math.round(Number(value) || 0).toLocaleString("ko-KR")}원`;
+}
+
+function parseWon(value) {
+  return Number(String(value).replace(/[^\d]/g, "")) || 0;
+}
+
+function sumMonthly(monthIndex, key) {
+  return salesPerformance.reduce((sum, person) => sum + person.monthly[monthIndex][key], 0);
+}
+
+function sumPerson(person, key) {
+  return person.monthly.reduce((sum, month) => sum + month[key], 0);
+}
+
+function renderSalesPerformance() {
+  const totalTarget = salesPerformance.reduce((sum, person) => sum + sumPerson(person, "target"), 0);
+  const totalActual = salesPerformance.reduce((sum, person) => sum + sumPerson(person, "actual"), 0);
+  const achievement = totalTarget ? Math.round((totalActual / totalTarget) * 1000) / 10 : 0;
+
+  document.querySelector("#salesSummary").innerHTML = `
+    <div><span>연간 목표 합계</span><strong>${formatWon(totalTarget)}</strong></div>
+    <div><span>연간 실적 합계</span><strong>${formatWon(totalActual)}</strong></div>
+    <div><span>달성률</span><strong>${achievement}%</strong></div>
+  `;
+
+  document.querySelector("#salesPerformanceTable").innerHTML = `
+    <table class="sales-table">
+      <thead>
+        <tr>
+          <th rowspan="2">영업사원</th>
+          ${monthLabels.map((month) => `<th colspan="2">${month}</th>`).join("")}
+          <th colspan="2">개인 1년 합계</th>
+        </tr>
+        <tr>
+          ${monthLabels.map(() => `<th>목표</th><th>실적</th>`).join("")}
+          <th>목표</th><th>실적</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${salesPerformance
+          .map(
+            (person, personIndex) => `
+              <tr>
+                <th>${person.name}<span>${person.team}</span></th>
+                ${person.monthly
+                  .map(
+                    (month, monthIndex) => `
+                      <td>
+                        <input
+                          class="sales-target-input"
+                          data-person-index="${personIndex}"
+                          data-month-index="${monthIndex}"
+                          inputmode="numeric"
+                          value="${formatWon(month.target)}"
+                        />
+                      </td>
+                      <td>${formatWon(month.actual)}</td>
+                    `
+                  )
+                  .join("")}
+                <td class="total-cell">${formatWon(sumPerson(person, "target"))}</td>
+                <td class="total-cell">${formatWon(sumPerson(person, "actual"))}</td>
+              </tr>
+            `
+          )
+          .join("")}
+        <tr class="month-total-row">
+          <th>월 합계</th>
+          ${monthLabels
+            .map((_, monthIndex) => `<td>${formatWon(sumMonthly(monthIndex, "target"))}</td><td>${formatWon(sumMonthly(monthIndex, "actual"))}</td>`)
+            .join("")}
+          <td>${formatWon(totalTarget)}</td>
+          <td>${formatWon(totalActual)}</td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
+
+function saveSalesTargets() {
+  document.querySelectorAll(".sales-target-input").forEach((input) => {
+    const personIndex = Number(input.dataset.personIndex);
+    const monthIndex = Number(input.dataset.monthIndex);
+    salesPerformance[personIndex].monthly[monthIndex].target = parseWon(input.value);
+  });
+  const auditId = `AUD-SALES-${Date.now().toString().slice(-6)}`;
+  auditRows.unshift([auditId, "매출목표 변경", "현재 사용자", "영업팀", "저장 완료", "원 단위 목표 변경"]);
+  auditRows.splice(20);
+  renderSalesPerformance();
+  renderAudit();
+  showToast("매출목표를 원 단위로 저장했습니다.");
 }
 
 function renderChats() {
@@ -615,6 +725,7 @@ document.addEventListener("click", (event) => {
   if (event.target.closest("#auditButton")) showView("audit");
   if (event.target.closest("#refreshButton")) showToast("ETBS OS 화면 데이터를 새로고침했습니다.");
   if (event.target.closest("#attachButton")) openCommandPanel("attach", "직원 채팅방 첨부파일");
+  if (event.target.closest("#saveSalesTargets")) saveSalesTargets();
 
   if (event.target.closest("#commandClose")) closeCommandPanel();
   if (event.target.closest("#commandCancel")) closeCommandPanel();

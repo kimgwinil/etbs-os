@@ -631,6 +631,83 @@ tr[data-command]:hover {
   text-align: left;
 }
 
+.sales-performance-panel {
+  margin-top: 12px;
+}
+
+.sales-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sales-summary div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8faf9;
+}
+
+.sales-summary span,
+.sales-table th span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.sales-summary strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
+}
+
+.sales-table-wrap {
+  overflow: auto;
+  max-height: 620px;
+}
+
+.sales-table {
+  min-width: 2300px;
+}
+
+.sales-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.sales-table tbody th {
+  left: 0;
+  z-index: 2;
+  min-width: 132px;
+  background: #ffffff;
+  position: sticky;
+}
+
+.sales-table td,
+.sales-table th {
+  white-space: nowrap;
+}
+
+.sales-target-input {
+  width: 118px;
+  min-height: 34px;
+  text-align: right;
+}
+
+.total-cell,
+.month-total-row td {
+  font-weight: 800;
+  background: #f0f8f7;
+}
+
+.month-total-row th {
+  background: #eef6f5;
+}
+
 .chat-panel {
   min-height: 680px;
   display: grid;
