@@ -115,7 +115,7 @@
                   <h2>고객사 360</h2>
                   <p>계약, 담당자, 이슈, 수익성을 한 화면에서 봅니다.</p>
                 </div>
-                <button class="secondary-button" type="button">고객 등록</button>
+                <button class="secondary-button" type="button" data-command="customer-create">고객 등록</button>
               </div>
               <div class="list" id="customerList"></div>
             </section>
@@ -131,7 +131,7 @@
                   <h2>판매상품 관리</h2>
                   <p>공급사, 판매상태, 정산 조건, 승인 상태를 관리합니다.</p>
                 </div>
-                <button class="secondary-button" type="button">상품 승인 요청</button>
+                <button class="secondary-button" type="button" data-command="product-approval">상품 승인 요청</button>
               </div>
               <div class="data-table" id="productTable"></div>
             </section>
@@ -168,7 +168,7 @@
                 <h2>영업 파이프라인</h2>
                 <p>리드부터 계약까지 단계별 금액과 다음 액션을 관리합니다.</p>
               </div>
-              <button class="secondary-button" type="button">기회 등록</button>
+              <button class="secondary-button" type="button" data-command="pipeline-create">기회 등록</button>
             </div>
             <div class="pipeline" id="pipelineBoard"></div>
           </div>
@@ -182,7 +182,7 @@
                   <h2>임직원 관리</h2>
                   <p>신상명세, 입사/퇴사, 인적사항, 결재권한을 관리합니다.</p>
                 </div>
-                <button class="secondary-button" type="button">입사 등록</button>
+                <button class="secondary-button" type="button" data-command="employee-create">입사 등록</button>
               </div>
               <div class="data-table" id="employeeTable"></div>
             </section>
@@ -259,6 +259,21 @@
       <div class="composer">
         <input id="teamMessage" type="text" placeholder="팀 메시지 입력" />
         <button class="primary-button" type="button" id="teamSend">기록</button>
+      </div>
+    </section>
+
+    <section class="command-panel" id="commandPanel" aria-label="버튼 실행 결과">
+      <div class="command-header">
+        <div>
+          <span class="status-pill" id="commandBadge">Action</span>
+          <h2 id="commandTitle">실행 결과</h2>
+          <p id="commandDescription">선택한 버튼의 실행 결과가 표시됩니다.</p>
+        </div>
+        <button class="icon-button" type="button" id="commandClose" title="닫기">×</button>
+      </div>
+      <div class="command-body">
+        <div class="detail-grid" id="commandMeta"></div>
+        <div class="notice" id="commandNotice">이 작업은 테스트 데이터 기준으로 실행되며 실제 외부 시스템에는 전송되지 않습니다.</div>
       </div>
     </section>
 

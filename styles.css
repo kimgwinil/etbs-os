@@ -558,6 +558,14 @@ th {
   font-size: 12px;
 }
 
+tr[data-command] {
+  cursor: pointer;
+}
+
+tr[data-command]:hover {
+  background: #f0f8f7;
+}
+
 .kanban,
 .pipeline {
   display: grid;
@@ -840,6 +848,57 @@ input {
 
 .chat-popup .message {
   max-width: 86%;
+}
+
+.command-panel {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 40;
+  width: min(420px, calc(100vw - 36px));
+  display: none;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 24px 70px rgba(31, 41, 51, 0.24);
+  overflow: hidden;
+}
+
+.command-panel.active {
+  display: block;
+}
+
+.command-header {
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  background: #fbfcfc;
+}
+
+.command-header h2 {
+  margin-top: 8px;
+}
+
+.command-header p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.45;
+}
+
+.command-body {
+  padding: 14px;
+}
+
+.command-body .detail-grid {
+  margin-bottom: 12px;
+}
+
+.command-body .detail-grid div {
+  font-size: 12px;
 }
 
 .toast {

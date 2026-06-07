@@ -164,6 +164,20 @@ const auditRows = [
 
 const toast = document.querySelector("#toast");
 
+const commandTemplates = {
+  "customer-create": ["고객 등록", "신규 고객사 등록 폼을 열었습니다.", "고객사명, 담당자, 계약 상태 입력 후 승인 요청으로 전환됩니다."],
+  "product-approval": ["상품 승인 요청", "선택 가능한 판매상품 승인 요청 큐를 생성했습니다.", "가격/수수료/공급사 변경은 감사로그와 PM 승인 필요 상태로 기록됩니다."],
+  "pipeline-create": ["기회 등록", "영업 기회 등록 작업을 시작했습니다.", "고객사, 예상 금액, 단계, 다음 액션을 입력하는 테스트 흐름입니다."],
+  "employee-create": ["입사 등록", "임직원 입사 등록 작업을 시작했습니다.", "신상명세와 결재권한 항목은 마스킹 및 PM 승인 필요 상태로 관리됩니다."],
+  metric: ["대시보드 지표", "선택한 KPI 기준으로 관련 업무 목록을 조회합니다.", "현재는 테스트 데이터 기준 필터 프리뷰입니다."],
+  action: ["우선 조치", "선택한 조치 항목을 운영 검토 큐에 추가했습니다.", "담당자 배정과 승인 여부는 감사로그로 남습니다."],
+  productRow: ["판매상품 상세", "판매상품 상세 패널을 열었습니다.", "상품 상태, 공급사, 연결 고객사, 재고, 감사로그를 확인합니다."],
+  employeeRow: ["임직원 상세", "임직원 상세 패널을 열었습니다.", "개인정보 원문은 표시하지 않고 권한/결재/입퇴사 상태만 확인합니다."],
+  auditRow: ["감사 로그 상세", "감사 로그 상세를 열었습니다.", "이벤트, 행위자, 대상, 통제 상태를 확인합니다."],
+  pipelineItem: ["파이프라인 상세", "영업 파이프라인 항목을 열었습니다.", "고객사 기회 단계와 다음 액션을 검토합니다."],
+  attach: ["파일 첨부", "파일 첨부 요청을 기록했습니다.", "첨부파일은 마스킹, 다운로드 권한, 보존기간 검토 대상입니다."]
+};
+
 function renderNav() {
   document.querySelector("#navList").innerHTML = navItems
     .map(
@@ -181,7 +195,7 @@ function renderDashboard() {
   document.querySelector("#dashboardMetrics").innerHTML = dashboardMetrics
     .map(
       ([label, value, helper, tone]) => `
-        <button class="metric ${tone}" type="button">
+        <button class="metric ${tone}" type="button" data-command="metric" data-command-label="${label}">
           <span>${label}</span>
           <strong>${value}</strong>
           <small>${helper}</small>
@@ -290,7 +304,7 @@ function renderPipeline() {
             <span>${count}</span>
           </div>
           <div class="stage-amount">${amount}</div>
-          ${names.map((name) => `<button type="button">${name}</button>`).join("")}
+          ${names.map((name) => `<button type="button" data-command="pipelineItem" data-command-label="${name}">${name}</button>`).join("")}
         </div>
       `
     )
@@ -362,6 +376,12 @@ function renderAudit() {
 }
 
 function renderDataTable(selector, headers, rows) {
+  const commandByTable = {
+    "#productTable": "productRow",
+    "#employeeTable": "employeeRow",
+    "#auditTable": "auditRow"
+  };
+  const rowCommand = commandByTable[selector] || "tableRow";
   document.querySelector(selector).innerHTML = `
     <table>
       <thead>
@@ -371,7 +391,7 @@ function renderDataTable(selector, headers, rows) {
         ${rows
           .map(
             (row) => `
-              <tr>
+              <tr data-command="${rowCommand}" data-command-label="${row[0]}">
                 ${row.map((cell) => `<td>${cell}</td>`).join("")}
               </tr>
             `
@@ -386,7 +406,7 @@ function renderActionList(selector, items) {
   document.querySelector(selector).innerHTML = items
     .map(
       ([title, text, tone]) => `
-        <button class="action-item ${tone || ""}" type="button">
+        <button class="action-item ${tone || ""}" type="button" data-command="action" data-command-label="${title}">
           <strong>${title}</strong>
           <span>${text}</span>
         </button>
@@ -411,6 +431,33 @@ function showToast(message) {
   window.setTimeout(() => toast.classList.remove("show"), 2200);
 }
 
+function openCommandPanel(command, label = "") {
+  const template = commandTemplates[command] || ["작업 실행", "선택한 작업을 실행했습니다.", "테스트 데이터 기준으로 실행 결과를 표시합니다."];
+  const auditId = `AUD-ACT-${Date.now().toString().slice(-6)}`;
+  const title = label && label !== template[0] ? `${template[0]} · ${label}` : template[0];
+  document.querySelector("#commandBadge").textContent = auditId;
+  document.querySelector("#commandTitle").textContent = title;
+  document.querySelector("#commandDescription").textContent = template[1];
+  document.querySelector("#commandMeta").innerHTML = `
+    <div><span>작업 상태</span><strong>테스트 실행 완료</strong></div>
+    <div><span>대상</span><strong>${label || "ETBS OS"}</strong></div>
+    <div><span>처리 방식</span><strong>로컬 샘플 데이터</strong></div>
+    <div><span>감사로그</span><strong>${auditId}</strong></div>
+    <div><span>권한 기준</span><strong>RBAC / Tenant Scope</strong></div>
+    <div><span>승인 상태</span><strong>필요 시 PM 승인 필요</strong></div>
+  `;
+  document.querySelector("#commandNotice").textContent = template[2];
+  document.querySelector("#commandPanel").classList.add("active");
+  auditRows.unshift([auditId, template[0], "현재 사용자", label || "ETBS OS", "테스트 실행", "권한/로그 확인"]);
+  auditRows.splice(20);
+  renderAudit();
+  showToast(`${template[0]} 실행 결과를 표시했습니다.`);
+}
+
+function closeCommandPanel() {
+  document.querySelector("#commandPanel").classList.remove("active");
+}
+
 document.addEventListener("click", (event) => {
   const navItem = event.target.closest(".nav-item");
   if (navItem) showView(navItem.dataset.view);
@@ -424,7 +471,14 @@ document.addEventListener("click", (event) => {
 
   if (event.target.closest("#auditButton")) showView("audit");
   if (event.target.closest("#refreshButton")) showToast("ETBS OS 화면 데이터를 새로고침했습니다.");
-  if (event.target.closest("#attachButton")) showToast("파일 첨부는 로그 기록과 다운로드 권한 검증 대상입니다.");
+  if (event.target.closest("#attachButton")) openCommandPanel("attach", "직원 채팅방 첨부파일");
+
+  if (event.target.closest("#commandClose")) closeCommandPanel();
+
+  const commandTarget = event.target.closest("[data-command]");
+  if (commandTarget) {
+    openCommandPanel(commandTarget.dataset.command, commandTarget.dataset.commandLabel || commandTarget.textContent.trim());
+  }
 
   const chatLauncher = event.target.closest("[data-chat-open]");
   if (chatLauncher) openChatPopup(chatLauncher.dataset.chatOpen);
