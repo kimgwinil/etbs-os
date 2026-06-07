@@ -33,7 +33,7 @@
           </div>
           <div class="top-actions">
             <button class="icon-button" type="button" title="새로고침" id="refreshButton">↻</button>
-            <button class="primary-button" type="button" id="auditButton">감사 로그 보기</button>
+            <button class="primary-button" type="button" id="settingsButton">설정</button>
           </div>
         </header>
 
@@ -41,10 +41,10 @@
           <div class="metric-strip" id="dashboardMetrics"></div>
 
           <div class="dashboard-layout">
-            <section class="panel wide">
+            <section class="panel">
               <div class="panel-header">
                 <div>
-                  <h2>운영 처리량과 마진 추이</h2>
+                  <h2>운영 처리량 마진 추이</h2>
                   <p>월별 업무 처리량, 마진율, 예외율을 함께 표시합니다.</p>
                 </div>
                 <span class="period-chip">최근 6개월</span>
@@ -76,6 +76,28 @@
                 </svg>
                 <div class="bar-stack" id="workloadBars"></div>
               </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header compact">
+                <div>
+                  <h2>실시간 매출 현황</h2>
+                  <p>월별 실적 원천 데이터를 집계합니다.</p>
+                </div>
+              </div>
+              <div class="realtime-sales" id="realtimeSalesBars"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>제품원가/판관비/일반관리비 입력</h2>
+                  <p>매출액에서 매입액과 비용을 공제해 영업이익을 계산합니다.</p>
+                </div>
+                <button class="secondary-button" type="button" id="saveFinanceInputs">비용 저장</button>
+              </div>
+              <div class="finance-inputs" id="financeInputs"></div>
+              <div class="operating-profit-formula" id="operatingProfitFormula"></div>
             </section>
 
             <section class="panel">
@@ -188,9 +210,23 @@
           </section>
         </section>
 
-        <section class="view" id="employeesView" aria-label="임직원 관리">
-          <div class="split-layout">
-            <section class="panel">
+        <section class="view" id="settingsView" aria-label="설정">
+          <div class="settings-grid">
+            <section class="panel detail">
+              <div class="panel-header compact">
+                <div>
+                  <h2>결재 라인 설정</h2>
+                  <p>승인, 반려, 보류에 필요한 결재권한과 처리 메뉴입니다.</p>
+                </div>
+              </div>
+              <div class="approval-actions">
+                <button class="secondary-button" type="button" data-command="approval" data-command-label="승인">승인</button>
+                <button class="secondary-button" type="button" data-command="approval" data-command-label="반려">반려</button>
+                <button class="secondary-button" type="button" data-command="approval" data-command-label="보류">보류</button>
+              </div>
+              <div class="data-table" id="approvalLineTable"></div>
+            </section>
+            <section class="panel detail">
               <div class="panel-header">
                 <div>
                   <h2>임직원 관리</h2>
@@ -201,18 +237,22 @@
               <div class="data-table" id="employeeTable"></div>
             </section>
             <section class="panel detail" id="employeeDetail"></section>
-          </div>
-        </section>
-
-        <section class="view" id="auditView" aria-label="감사 로그">
-          <div class="panel">
-            <div class="panel-header">
-              <div>
-                <h2>보안 및 감사 로그</h2>
-                <p>개인정보 접근, 권한 변경, 파일 첨부, 채팅 로그를 추적합니다.</p>
+            <section class="panel detail">
+              <div class="panel-header compact">
+                <div>
+                  <h2>분야별 감사 로그</h2>
+                  <p>필요할 때 설정 메뉴에서만 확인합니다.</p>
+                </div>
               </div>
-            </div>
-            <div class="audit-table" id="auditTable"></div>
+              <div class="audit-filter-row">
+                <button class="secondary-button" type="button" data-audit-filter="all">전체</button>
+                <button class="secondary-button" type="button" data-audit-filter="고객">고객</button>
+                <button class="secondary-button" type="button" data-audit-filter="상품">상품</button>
+                <button class="secondary-button" type="button" data-audit-filter="재무">재무</button>
+                <button class="secondary-button" type="button" data-audit-filter="결재">결재</button>
+              </div>
+              <div class="audit-table" id="auditTable"></div>
+            </section>
           </div>
         </section>
       </main>

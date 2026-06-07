@@ -4,8 +4,7 @@ const navItems = [
   ["products", "판매상품", "◫"],
   ["logistics", "배송/입출고", "⇄"],
   ["pipeline", "영업 파이프라인", "◇"],
-  ["employees", "임직원 관리", "♢"],
-  ["audit", "보안/감사", "◷"]
+  ["settings", "설정", "⚙"]
 ];
 
 const companyPrefixes = ["한빛", "동서", "서울", "푸른", "넥스트", "브라이트", "에이치", "청담", "동부", "하나", "미래", "세종", "대한", "우진", "케이", "더웰", "가온", "라온", "비전", "코어"];
@@ -36,6 +35,10 @@ function makeCustomer(index) {
     manager: `AM ${familyNames[index % familyNames.length]}${givenNames[(index + 5) % givenNames.length]}`,
     margin: `${margin}%`,
     issue: ["정산 증적 보완", "배송 지연 증가", "SLA 위험", "상품 승인 대기", "권한 검토 필요"][index % 5],
+    address: `서울시 중구 테스트로 ${index + 1}`,
+    phone: `02-${String(1000 + index).padStart(4, "0")}-${String(2000 + index).padStart(4, "0")}`,
+    contactPerson: `${familyNames[index % familyNames.length]}${givenNames[(index + 2) % givenNames.length]}`,
+    email: `contact${String(index + 1).padStart(3, "0")}@example.test`,
     status,
     employeeCount: 10 + ((index * 13) % 240),
     productCount: 2 + (index % 7)
@@ -84,14 +87,28 @@ const customers = Array.from({ length: 100 }, (_, index) => makeCustomer(index))
 const products = Array.from({ length: 100 }, (_, index) => makeProduct(index));
 const employees = Array.from({ length: 50 }, (_, index) => makeEmployee(index));
 
-const dashboardMetrics = [
-  ["고객사", `${customers.length}개`, "테스트 고객정보", "positive"],
-  ["판매상품", `${products.length}개`, "고객사/공급사 연결", "neutral"],
-  ["임직원", `${employees.length}명`, "마스킹 테스트 데이터", "positive"],
-  ["SLA 초과", "7건", "즉시 조치", "danger"],
-  ["배송 지연", "14건", "입출고 확인", "warning"],
-  ["월 매출", "18.4억", "산식 PM 승인 필요", "warning"]
+const rawFinancialRecords = [
+  { id: "FIN-001", type: "revenue", label: "매출액", amount: 7095000000 },
+  { id: "FIN-002", type: "purchase", label: "매입액", amount: 3850000000 },
+  { id: "FIN-003", type: "product_cost", label: "제품원가", amount: 920000000 },
+  { id: "FIN-004", type: "selling_admin", label: "판매관리비", amount: 640000000 },
+  { id: "FIN-005", type: "general_admin", label: "일반관리비", amount: 380000000 }
 ];
+
+function classifyFinancialRecords() {
+  const classified = rawFinancialRecords.reduce(
+    (acc, record) => {
+      acc[record.type] = (acc[record.type] || 0) + record.amount;
+      return acc;
+    },
+    { revenue: 0, purchase: 0, product_cost: 0, selling_admin: 0, general_admin: 0 }
+  );
+  classified.totalCost = classified.purchase + classified.product_cost + classified.selling_admin + classified.general_admin;
+  classified.operatingProfit = classified.revenue - classified.totalCost;
+  return classified;
+}
+
+let dashboardMetrics = [];
 
 const workloadBars = [
   ["고객 CS", 82, "#0f766e"],
@@ -171,6 +188,14 @@ const auditRows = [
 ];
 
 const toast = document.querySelector("#toast");
+let auditFilter = "all";
+
+const approvalLines = [
+  ["정산 승인", "정산팀 김서연", "재무리더", "승인/반려/보류"],
+  ["상품 승인", "상품팀 최민재", "상품리더", "승인/반려/보류"],
+  ["고객 계약", "AM 김나은", "영업리더", "승인/반려/보류"],
+  ["결재권한 변경", "HR 관리자", "보안책임자", "승인/반려/보류"]
+];
 
 const commandTemplates = {
   "customer-create": ["고객 등록", "신규 고객사 등록 폼을 열었습니다.", "고객사명, 담당자, 계약 상태 입력 후 승인 요청으로 전환됩니다."],
@@ -183,6 +208,7 @@ const commandTemplates = {
   employeeRow: ["임직원 상세", "임직원 상세 패널을 열었습니다.", "개인정보 원문은 표시하지 않고 권한/결재/입퇴사 상태만 확인합니다."],
   auditRow: ["감사 로그 상세", "감사 로그 상세를 열었습니다.", "이벤트, 행위자, 대상, 통제 상태를 확인합니다."],
   pipelineItem: ["파이프라인 상세", "영업 파이프라인 항목을 열었습니다.", "고객사 기회 단계와 다음 액션을 검토합니다."],
+  approval: ["결재 처리", "승인/반려/보류 결재 작업을 선택했습니다.", "결재권한과 결재라인 기준으로 처리됩니다."],
   attach: ["파일 첨부", "파일 첨부 요청을 기록했습니다.", "첨부파일은 마스킹, 다운로드 권한, 보존기간 검토 대상입니다."]
 };
 
@@ -192,7 +218,11 @@ const formConfigs = {
     ["manager", "담당 AM", "text", "예: AM 김권일", "AM 김권일"],
     ["contract", "계약 상태", "text", "예: 신규 온보딩", "신규 온보딩"],
     ["issue", "최근 이슈", "text", "예: 초기 계약 검토", "초기 계약 검토"],
-    ["margin", "마진율", "text", "예: 7.5%", "7.5%"]
+    ["margin", "마진율", "text", "예: 7.5%", "7.5%"],
+    ["address", "주소", "text", "예: 서울시 중구 테스트로 1", "서울시 중구 테스트로 1"],
+    ["phone", "연락처", "text", "예: 02-1234-5678", "02-1234-5678"],
+    ["contactPerson", "거래처 담당자", "text", "예: 홍길동", "홍길동"],
+    ["email", "이메일", "email", "예: contact@example.com", "contact@example.com"]
   ],
   "product-approval": [
     ["productName", "상품명", "text", "예: 선택복지 상품 101", "선택복지 상품 101"],
@@ -232,7 +262,28 @@ function renderNav() {
     .join("");
 }
 
+function getAnnualSalesTarget() {
+  return salesPerformance.reduce((sum, person) => sum + sumPerson(person, "target"), 0);
+}
+
+function getAnnualSalesActual() {
+  return salesPerformance.reduce((sum, person) => sum + sumPerson(person, "actual"), 0);
+}
+
 function renderDashboard() {
+  const finance = classifyFinancialRecords();
+  const target = getAnnualSalesTarget();
+  const actual = getAnnualSalesActual();
+  const achievement = target ? Math.round((actual / target) * 1000) / 10 : 0;
+  dashboardMetrics = [
+    ["목표금액", formatWon(target), "영업사원 1년 목표 합계", "neutral"],
+    ["매출금액", formatWon(actual), `달성율 ${achievement}%`, "positive"],
+    ["실시간 매출 현황", formatWon(finance.revenue), "원천 매출 레코드 기준", "positive"],
+    ["영업이익", formatWon(finance.operatingProfit), "매출-매입-비용", finance.operatingProfit >= 0 ? "positive" : "danger"],
+    ["운영 처리량", "641건", "전월 대비 +18%", "neutral"],
+    ["마진 추이", `${Math.round((finance.operatingProfit / finance.revenue) * 1000) / 10}%`, "영업이익률", "warning"]
+  ];
+
   document.querySelector("#dashboardMetrics").innerHTML = dashboardMetrics
     .map(
       ([label, value, helper, tone]) => `
@@ -257,6 +308,55 @@ function renderDashboard() {
     .join("");
 
   renderActionList("#dashboardActions", dashboardActions);
+  renderFinanceInputs();
+  renderRealtimeSales();
+}
+
+function renderFinanceInputs() {
+  const finance = classifyFinancialRecords();
+  document.querySelector("#financeInputs").innerHTML = rawFinancialRecords
+    .map(
+      (record) => `
+        <label>
+          <span>${record.label}</span>
+          <input class="finance-input" data-finance-id="${record.id}" inputmode="numeric" value="${formatWon(record.amount)}" />
+        </label>
+      `
+    )
+    .join("");
+  document.querySelector("#operatingProfitFormula").innerHTML = `
+    <strong>영업이익 ${formatWon(finance.operatingProfit)}</strong>
+    <span>매출액 ${formatWon(finance.revenue)} - 매입액 ${formatWon(finance.purchase)} - 제품원가 ${formatWon(finance.product_cost)} - 판매관리비 ${formatWon(finance.selling_admin)} - 일반관리비 ${formatWon(finance.general_admin)}</span>
+  `;
+}
+
+function saveFinanceInputs() {
+  document.querySelectorAll(".finance-input").forEach((input) => {
+    const record = rawFinancialRecords.find((item) => item.id === input.dataset.financeId);
+    if (record) record.amount = parseWon(input.value);
+  });
+  const auditId = `AUD-FIN-${Date.now().toString().slice(-6)}`;
+  auditRows.unshift([auditId, "원가/판관비 입력 저장", "현재 사용자", "대시보드", "저장 완료", "영업이익 재계산"]);
+  auditRows.splice(20);
+  renderDashboard();
+  renderAudit();
+  showToast("원천 재무 데이터를 분류 저장하고 영업이익을 재계산했습니다.");
+}
+
+function renderRealtimeSales() {
+  const values = monthLabels.map((month, index) => ({ month, amount: sumMonthly(index, "actual") }));
+  const max = Math.max(...values.map((item) => item.amount));
+  document.querySelector("#realtimeSalesBars").innerHTML = values
+    .map(
+      (item) => `
+        <div class="realtime-row">
+          <span>${item.month}</span>
+          <div class="bar-track"><i style="width:${Math.max(8, Math.round((item.amount / max) * 100))}%"></i></div>
+          <strong>${formatWon(item.amount)}</strong>
+        </div>
+      `
+    )
+    .join("");
 }
 
 function renderCustomers() {
@@ -290,6 +390,10 @@ function renderCustomerDetail(name) {
       <div><span>담당자</span><strong>${customer.manager}</strong></div>
       <div><span>계약 상태</span><strong>${customer.contract}</strong></div>
       <div><span>마진율</span><strong>${customer.margin}</strong></div>
+      <div><span>주소</span><strong>${customer.address}</strong></div>
+      <div><span>연락처</span><strong>${customer.phone}</strong></div>
+      <div><span>거래처 담당자</span><strong>${customer.contactPerson}</strong></div>
+      <div><span>이메일</span><strong>${customer.email}</strong></div>
       <div><span>연결 상품</span><strong>${linkedProducts}개</strong></div>
       <div><span>연결 임직원</span><strong>${linkedEmployees}명</strong></div>
       <div><span>고객 임직원 규모</span><strong>${customer.employeeCount}명</strong></div>
@@ -578,14 +682,23 @@ function renderEmployeeDetail(employeeId) {
 }
 
 function renderAudit() {
-  renderDataTable("#auditTable", ["로그 ID", "이벤트", "행위자", "대상", "상태", "통제"], auditRows);
+  const filteredRows =
+    auditFilter === "all"
+      ? auditRows
+      : auditRows.filter((row) => row.join(" ").includes(auditFilter));
+  renderDataTable("#auditTable", ["로그 ID", "이벤트", "행위자", "대상", "상태", "통제"], filteredRows);
+}
+
+function renderApprovalLines() {
+  renderDataTable("#approvalLineTable", ["결재 유형", "요청자", "승인자", "처리 메뉴"], approvalLines);
 }
 
 function renderDataTable(selector, headers, rows) {
   const commandByTable = {
     "#productTable": "productRow",
     "#employeeTable": "employeeRow",
-    "#auditTable": "auditRow"
+    "#auditTable": "auditRow",
+    "#approvalLineTable": "approval"
   };
   const rowCommand = commandByTable[selector] || "tableRow";
   document.querySelector(selector).innerHTML = `
@@ -654,7 +767,7 @@ function openCommandPanel(command, label = "") {
     `
     : `
       <div><span>대상</span><strong>${label || "ETBS OS"}</strong></div>
-      <div><span>안내</span><strong>상세 로그는 보안/감사 메뉴에서 확인</strong></div>
+      <div><span>안내</span><strong>상세 로그는 설정 메뉴에서 확인</strong></div>
     `;
   renderCommandForm(command);
   document.querySelector("#commandNotice").textContent = template[2];
@@ -732,6 +845,10 @@ function saveCustomer(values) {
     manager: values.manager,
     margin: values.margin,
     issue: values.issue,
+    address: values.address,
+    phone: values.phone,
+    contactPerson: values.contactPerson,
+    email: values.email,
     status: "정상",
     employeeCount: 0,
     productCount: 0
@@ -790,11 +907,19 @@ document.addEventListener("click", (event) => {
     renderCustomerDetail(customerRow.dataset.customer);
   }
 
-  if (event.target.closest("#auditButton")) showView("audit");
+  if (event.target.closest("#settingsButton")) showView("settings");
   if (event.target.closest("#refreshButton")) showToast("ETBS OS 화면 데이터를 새로고침했습니다.");
   if (event.target.closest("#attachButton")) openCommandPanel("attach", "직원 채팅방 첨부파일");
   if (event.target.closest("#saveSalesTargets")) saveSalesTargets();
   if (event.target.closest("#saveProductInventory")) saveProductInventory();
+  if (event.target.closest("#saveFinanceInputs")) saveFinanceInputs();
+
+  const auditFilterButton = event.target.closest("[data-audit-filter]");
+  if (auditFilterButton) {
+    auditFilter = auditFilterButton.dataset.auditFilter;
+    renderAudit();
+    showToast("감사 로그 필터를 적용했습니다.");
+  }
 
   if (event.target.closest("#commandClose")) closeCommandPanel();
   if (event.target.closest("#commandCancel")) closeCommandPanel();
@@ -860,4 +985,5 @@ renderLogistics();
 renderPipeline();
 renderChats();
 renderEmployees();
+renderApprovalLines();
 renderAudit();
