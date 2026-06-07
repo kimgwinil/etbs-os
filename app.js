@@ -56,7 +56,7 @@ function makeProduct(index) {
     approvalState,
     approvalState === "PM 승인 필요" ? "PM 승인 필요" : `${marginValue.toFixed(1)}%`,
     signal,
-    `재고 ${120 + ((index * 19) % 880)}`,
+    120 + ((index * 19) % 880),
     `AUD-PROD-${String(1400 + index).padStart(4, "0")}`
   ];
 }
@@ -127,12 +127,6 @@ const logistics = {
     ["운송사 오류", "송장 API", "재처리"]
   ]
 };
-
-const inventoryRisks = [
-  [products[2][0], "입고 검수 지연으로 SLA 위험", "warning"],
-  [products[4][0], "배송 지연 14건, 운송사 확인 필요", "danger"],
-  [products[1][0], "외부 API 전송 항목 PM 승인 필요", "warning"]
-];
 
 const pipeline = [
   ["리드", "6건", "5.2억", [customers[6].name, customers[7].name]],
@@ -205,7 +199,7 @@ const formConfigs = {
     ["supplier", "공급사", "text", "예: 신규공급사", "신규공급사"],
     ["customerName", "연결 고객사", "text", "예: 한빛전자", "한빛전자"],
     ["margin", "마진율", "text", "예: PM 승인 필요", "PM 승인 필요"],
-    ["stock", "재고", "text", "예: 재고 300", "재고 300"]
+    ["stock", "재고", "number", "예: 300", "300"]
   ],
   "pipeline-create": [
     ["opportunityName", "기회/기획명", "text", "예: 2026 복지몰 확대 제안", "2026 복지몰 확대 제안"],
@@ -308,7 +302,50 @@ function renderCustomerDetail(name) {
 }
 
 function renderProducts() {
-  renderDataTable("#productTable", ["상품명", "공급사", "연결 고객사", "상태", "마진", "운영 신호", "재고", "감사로그"], products);
+  document.querySelector("#productTable").innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>상품명</th>
+          <th>공급사</th>
+          <th>연결 고객사</th>
+          <th>상태</th>
+          <th>마진</th>
+          <th>운영 신호</th>
+          <th>재고</th>
+          <th>감사로그</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${products
+          .map(
+            (product, index) => `
+              <tr data-command="productRow" data-command-label="${product[0]}">
+                <td>${product[0]}</td>
+                <td>${product[1]}</td>
+                <td>${product[2]}</td>
+                <td>${product[3]}</td>
+                <td>${product[4]}</td>
+                <td>${product[5]}</td>
+                <td>
+                  <input
+                    class="stock-input"
+                    data-product-index="${index}"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value="${product[6]}"
+                    aria-label="${product[0]} 재고"
+                  />
+                </td>
+                <td>${product[7]}</td>
+              </tr>
+            `
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
 }
 
 function renderLogistics() {
@@ -338,7 +375,33 @@ function renderLogistics() {
       `
     )
     .join("");
-  renderActionList("#inventoryRisks", inventoryRisks);
+  renderActionList("#inventoryRisks", getInventoryRisks());
+}
+
+function getInventoryRisks() {
+  return products
+    .slice()
+    .sort((a, b) => Number(a[6]) - Number(b[6]))
+    .slice(0, 5)
+    .map((product) => {
+      const stock = Number(product[6]);
+      const tone = stock < 180 ? "danger" : stock < 260 ? "warning" : "neutral";
+      return [product[0], `현재 재고 ${stock.toLocaleString("ko-KR")}개 · 입출고 관리 연동`, tone];
+    });
+}
+
+function saveProductInventory() {
+  document.querySelectorAll(".stock-input").forEach((input) => {
+    const index = Number(input.dataset.productIndex);
+    products[index][6] = Math.max(0, Number(input.value) || 0);
+  });
+  const auditId = `AUD-STOCK-${Date.now().toString().slice(-6)}`;
+  auditRows.unshift([auditId, "판매상품 재고 변경", "현재 사용자", "판매상품", "저장 완료", "입출고 현황 갱신"]);
+  auditRows.splice(20);
+  renderProducts();
+  renderLogistics();
+  renderAudit();
+  showToast("판매상품 재고를 숫자로 저장하고 입출고 현황을 갱신했습니다.");
 }
 
 function renderPipeline() {
@@ -583,20 +646,24 @@ function openCommandPanel(command, label = "") {
   document.querySelector("#commandBadge").textContent = auditId;
   document.querySelector("#commandTitle").textContent = title;
   document.querySelector("#commandDescription").textContent = template[1];
-  document.querySelector("#commandMeta").innerHTML = `
-    <div><span>작업 상태</span><strong>테스트 실행 완료</strong></div>
-    <div><span>대상</span><strong>${label || "ETBS OS"}</strong></div>
-    <div><span>처리 방식</span><strong>로컬 샘플 데이터</strong></div>
-    <div><span>감사로그</span><strong>${auditId}</strong></div>
-    <div><span>권한 기준</span><strong>RBAC / Tenant Scope</strong></div>
-    <div><span>승인 상태</span><strong>필요 시 PM 승인 필요</strong></div>
-  `;
+  document.querySelector("#commandMeta").innerHTML = formConfigs[command]
+    ? `
+      <div><span>대상</span><strong>${label || "ETBS OS"}</strong></div>
+      <div><span>처리 방식</span><strong>입력 후 저장</strong></div>
+      <div><span>승인 상태</span><strong>필요 시 PM 승인 필요</strong></div>
+    `
+    : `
+      <div><span>대상</span><strong>${label || "ETBS OS"}</strong></div>
+      <div><span>안내</span><strong>상세 로그는 보안/감사 메뉴에서 확인</strong></div>
+    `;
   renderCommandForm(command);
   document.querySelector("#commandNotice").textContent = template[2];
   document.querySelector("#commandPanel").classList.add("active");
-  auditRows.unshift([auditId, template[0], "현재 사용자", label || "ETBS OS", "테스트 실행", "권한/로그 확인"]);
-  auditRows.splice(20);
-  renderAudit();
+  if (formConfigs[command] || command === "attach") {
+    auditRows.unshift([auditId, template[0], "현재 사용자", label || "ETBS OS", "요청 생성", "저장 시 확정"]);
+    auditRows.splice(20);
+    renderAudit();
+  }
   showToast(`${template[0]} 실행 결과를 표시했습니다.`);
 }
 
@@ -681,11 +748,12 @@ function saveProduct(values) {
     "승인대기",
     values.margin,
     "승인 요청",
-    values.stock,
+    Math.max(0, Number(values.stock) || 0),
     activeAuditId
   ]);
   renderDashboard();
   renderProducts();
+  renderLogistics();
 }
 
 function savePipeline(values) {
@@ -726,12 +794,14 @@ document.addEventListener("click", (event) => {
   if (event.target.closest("#refreshButton")) showToast("ETBS OS 화면 데이터를 새로고침했습니다.");
   if (event.target.closest("#attachButton")) openCommandPanel("attach", "직원 채팅방 첨부파일");
   if (event.target.closest("#saveSalesTargets")) saveSalesTargets();
+  if (event.target.closest("#saveProductInventory")) saveProductInventory();
 
   if (event.target.closest("#commandClose")) closeCommandPanel();
   if (event.target.closest("#commandCancel")) closeCommandPanel();
   if (event.target.closest("#commandSave")) saveCommandForm();
 
-  const commandTarget = event.target.closest("[data-command]");
+  const isInlineControl = event.target.closest("input, select, textarea, #saveProductInventory, #saveSalesTargets, #commandSave, #commandCancel, #commandClose");
+  const commandTarget = isInlineControl ? null : event.target.closest("[data-command]");
   if (commandTarget) {
     openCommandPanel(commandTarget.dataset.command, commandTarget.dataset.commandLabel || commandTarget.textContent.trim());
   }

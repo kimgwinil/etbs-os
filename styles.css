@@ -166,6 +166,7 @@ h3 {
 
 .top-actions,
 .panel-header,
+.panel-actions,
 .stage-head,
 .bar-row div:first-child {
   display: flex;
@@ -694,6 +695,12 @@ tr[data-command]:hover {
 
 .sales-target-input {
   width: 118px;
+  min-height: 34px;
+  text-align: right;
+}
+
+.stock-input {
+  width: 96px;
   min-height: 34px;
   text-align: right;
 }
