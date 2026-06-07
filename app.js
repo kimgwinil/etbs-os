@@ -1,362 +1,431 @@
-const tasks = [
+const navItems = [
+  ["dashboard", "대시보드", "▦"],
+  ["customers", "고객관리", "◎"],
+  ["products", "판매상품", "◫"],
+  ["logistics", "배송/입출고", "⇄"],
+  ["pipeline", "영업 파이프라인", "◇"],
+  ["ai", "AI 채팅방", "✦"],
+  ["teamChat", "직원 채팅방", "☰"],
+  ["employees", "임직원 관리", "♢"],
+  ["audit", "보안/감사", "◷"]
+];
+
+const dashboardMetrics = [
+  ["월 매출", "18.4억", "+7.2%", "positive"],
+  ["마진율", "6.1%", "PM 승인 필요", "warning"],
+  ["처리 업무", "641건", "전월 대비 +18%", "positive"],
+  ["SLA 초과", "7건", "즉시 조치", "danger"],
+  ["배송 지연", "14건", "입출고 확인", "warning"],
+  ["파이프라인", "42.8억", "계약검토 9건", "neutral"]
+];
+
+const workloadBars = [
+  ["고객 CS", 82, "#0f766e"],
+  ["정산/포인트", 68, "#2563eb"],
+  ["배송/입출고", 54, "#b7791f"],
+  ["상품 승인", 42, "#7c3aed"],
+  ["권한/감사", 28, "#b42318"]
+];
+
+const dashboardActions = [
+  ["SLA 초과 고객사 3곳", "동서바이오, 한빛전자, 서울제약 업무 재배정 필요", "danger"],
+  ["저마진 상품군", "배송 예외율이 높은 복지몰 상품 마진 재검토", "warning"],
+  ["승인 대기", "고금액 정산 4건과 결재권한 변경 2건", "neutral"],
+  ["PM 승인 필요", "개인정보/민감정보 처리범위와 AI 자동응답 정책", "warning"]
+];
+
+const customers = [
   {
-    id: "OPS-10482",
-    type: "Settlement",
-    typeLabel: "정산",
-    status: "pending_approval",
-    client: "한빛전자",
-    supplier: "모두복지몰",
-    assignee: "정산팀 김서연",
-    sla: "risk",
-    amount: "높음",
-    employeeRef: "EMP-82***",
-    exception: "증적 보완 필요",
-    lastEvent: "13분 전",
-    audit: "정산 확정 전 승인 ID 필요"
+    name: "한빛전자",
+    tenant: "client_company",
+    contract: "갱신 74일 전",
+    manager: "AM 김나은",
+    margin: "4.6%",
+    issue: "정산 증적 보완",
+    status: "주의"
   },
   {
-    id: "OPS-10481",
-    type: "Integration",
-    typeLabel: "연동",
-    status: "exception",
-    client: "동서바이오",
-    supplier: "온누리 API",
-    assignee: "플랫폼 운영팀",
-    sla: "breached",
-    amount: "중간",
-    employeeRef: "EMP-19***",
-    exception: "외부 연동 실패",
-    lastEvent: "28분 전",
-    audit: "재시도 요청과 실패 코드를 감사로그에 기록"
+    name: "동서바이오",
+    tenant: "client_company",
+    contract: "운영중",
+    manager: "AM 최윤서",
+    margin: "3.1%",
+    issue: "배송 지연 증가",
+    status: "개선"
   },
   {
-    id: "OPS-10480",
-    type: "Point",
-    typeLabel: "포인트",
-    status: "in_progress",
-    client: "에이치케어",
-    supplier: "복지포인트",
-    assignee: "운영팀 박지훈",
-    sla: "normal",
-    amount: "낮음",
-    employeeRef: "EMP-44***",
-    exception: "없음",
-    lastEvent: "44분 전",
-    audit: "포인트 보정 시 변경 전후 값 기록"
+    name: "서울제약",
+    tenant: "client_company",
+    contract: "계약 검토",
+    manager: "AM 박도현",
+    margin: "9.2%",
+    issue: "SLA 위험",
+    status: "정상"
   },
   {
-    id: "OPS-10479",
-    type: "CS",
-    typeLabel: "CS",
-    status: "assigned",
-    client: "서울제약",
-    supplier: "베네카페",
-    assignee: "CS팀 이도윤",
-    sla: "risk",
-    amount: "없음",
-    employeeRef: "EMP-77***",
-    exception: "고객 확인 대기",
-    lastEvent: "1시간 전",
-    audit: "개인정보 상세 열람 시 목적 입력 필요"
-  },
-  {
-    id: "OPS-10478",
-    type: "Review",
-    typeLabel: "심사",
-    status: "new",
-    client: "푸른식품",
-    supplier: "의료비 심사",
-    assignee: "미배정",
-    sla: "normal",
-    amount: "중간",
-    employeeRef: "EMP-31***",
-    exception: "정책 검토 필요",
-    lastEvent: "2시간 전",
-    audit: "민감정보 항목은 PM 승인 필요"
-  },
-  {
-    id: "OPS-10477",
-    type: "Settlement",
-    typeLabel: "정산",
-    status: "completed",
-    client: "넥스트모빌리티",
-    supplier: "그린문고",
-    assignee: "정산팀 김서연",
-    sla: "normal",
-    amount: "중간",
-    employeeRef: "EMP-58***",
-    exception: "없음",
-    lastEvent: "오늘 09:20",
-    audit: "완료 근거와 승인자를 보존"
+    name: "푸른식품",
+    tenant: "client_company",
+    contract: "운영중",
+    manager: "AM 이서진",
+    margin: "7.8%",
+    issue: "상품 승인 대기",
+    status: "정상"
   }
 ];
 
-const profitRows = [
-  { client: "동서바이오", margin: 3.1, cases: 184, exceptionRate: 19, effort: "높음" },
-  { client: "한빛전자", margin: 4.6, cases: 221, exceptionRate: 15, effort: "높음" },
-  { client: "푸른식품", margin: 7.8, cases: 96, exceptionRate: 11, effort: "중간" },
-  { client: "서울제약", margin: 9.2, cases: 140, exceptionRate: 8, effort: "중간" }
+const products = [
+  ["복지 포인트 패키지", "복지포인트", "판매중", "8.4%", "정상", "AUD-PROD-1041"],
+  ["온누리 모바일권", "온누리 API", "승인대기", "PM 승인 필요", "연동 검토", "AUD-PROD-1042"],
+  ["건강검진 제휴권", "케어파트너", "판매중", "6.9%", "재고 위험", "AUD-PROD-1043"],
+  ["도서 복지몰 쿠폰", "그린문고", "중지검토", "3.8%", "저마진", "AUD-PROD-1044"],
+  ["임직원 선물세트", "모두복지몰", "판매중", "7.1%", "배송 지연", "AUD-PROD-1045"]
 ];
 
-const statusLabels = {
-  new: "신규",
-  assigned: "배정",
-  in_progress: "진행",
-  pending_approval: "승인 대기",
-  blocked: "보류",
-  exception: "예외",
-  completed: "완료"
+const logistics = {
+  inbound: [
+    ["입고 대기", "건강검진 제휴권", "240건"],
+    ["검수 필요", "선물세트 옵션", "18건"]
+  ],
+  outbound: [
+    ["출고 준비", "도서 쿠폰", "96건"],
+    ["출고 완료", "복지 포인트", "312건"]
+  ],
+  delivery: [
+    ["배송중", "선물세트", "128건"],
+    ["배송 지연", "온누리 모바일권", "14건"]
+  ],
+  exception: [
+    ["주소 확인", "EMP-18***", "PM 승인 필요"],
+    ["운송사 오류", "송장 API", "재처리"]
+  ]
 };
 
-const slaLabels = {
-  normal: "정상",
-  risk: "위험",
-  breached: "초과"
-};
+const inventoryRisks = [
+  ["건강검진 제휴권", "입고 검수 지연으로 SLA 위험", "warning"],
+  ["임직원 선물세트", "배송 지연 14건, 운송사 확인 필요", "danger"],
+  ["온누리 모바일권", "외부 API 전송 항목 PM 승인 필요", "warning"]
+];
 
-const selectedTaskIds = new Set();
-let activeTaskId = null;
+const pipeline = [
+  ["리드", "6건", "5.2억", ["에이치케어", "청담교육"]],
+  ["제안", "8건", "9.8억", ["동부물류", "하나푸드"]],
+  ["계약검토", "9건", "18.1억", ["서울제약", "브라이트랩"]],
+  ["수주", "4건", "9.7억", ["넥스트모빌리티"]],
+  ["실패/보류", "3건", "1.4억", ["저마진 조건"]]
+];
 
-const taskTable = document.querySelector("#taskTable");
-const operationsMetrics = document.querySelector("#operationsMetrics");
-const taskDetail = document.querySelector("#taskDetail");
-const emptyDetail = document.querySelector("#emptyDetail");
+const employees = [
+  ["김서연", "정산팀", "재직", "2021-04-12", "정산 승인자", "정상"],
+  ["박지훈", "운영팀", "재직", "2022-11-03", "운영 처리자", "정상"],
+  ["이도윤", "CS팀", "재직", "2023-06-19", "개인정보 제한", "열람 사유 필요"],
+  ["최민재", "상품팀", "입사예정", "2026-06-17", "미지정", "결재권한 지정 필요"],
+  ["정하린", "영업팀", "퇴사예정", "2026-06-28", "AM", "권한 회수 예약"]
+];
+
+const aiMessages = [
+  ["assistant", "오늘 SLA 초과 7건 중 배송/입출고 4건, 정산 2건, CS 1건입니다. 개인정보 원문 없이 집계 기준으로 요약했습니다."],
+  ["user", "저마진 고객사 원인을 알려줘"],
+  ["assistant", "동서바이오는 배송 지연과 예외 재처리 비율이 높습니다. 계약/원가 산식은 PM 승인 필요 상태입니다."]
+];
+
+const teamMessages = [
+  ["정산팀 김서연", "한빛전자 정산 증적 4건 승인 대기입니다.", "AUD-CHAT-771"],
+  ["운영팀 박지훈", "배송 지연 건은 운송사 API 재처리 후 결과 남기겠습니다.", "AUD-CHAT-772"],
+  ["CS팀 이도윤", "첨부파일: 고객문의_마스킹본.xlsx", "AUD-FILE-128"]
+];
+
+const auditRows = [
+  ["AUD-10291", "개인정보 상세 열람", "CS팀 이도윤", "EMP-77***", "사유 입력 완료", "보존기간 PM 승인 필요"],
+  ["AUD-10292", "결재권한 변경", "HR 관리자", "김서연", "승인 ID APR-42", "변경 전후 기록"],
+  ["AUD-10293", "파일 첨부", "CS팀 이도윤", "고객문의_마스킹본.xlsx", "대화 로그 연결", "다운로드 권한 제한"],
+  ["AUD-10294", "상품 가격 변경", "상품팀 최민재", "온누리 모바일권", "승인 대기", "PM 승인 필요"],
+  ["AUD-10295", "AI 프롬프트", "운영팀 박지훈", "SLA 초과 요약", "개인정보 미포함", "자동 의사결정 금지"]
+];
+
 const toast = document.querySelector("#toast");
 
-function renderMetrics() {
-  const metrics = [
-    ["신규", tasks.filter((task) => task.status === "new").length],
-    ["진행중", tasks.filter((task) => task.status === "in_progress").length],
-    ["SLA 위험", tasks.filter((task) => task.sla === "risk").length],
-    ["SLA 초과", tasks.filter((task) => task.sla === "breached").length],
-    ["예외", tasks.filter((task) => task.status === "exception").length],
-    ["오늘 완료", tasks.filter((task) => task.status === "completed").length]
-  ];
-
-  operationsMetrics.innerHTML = metrics
+function renderNav() {
+  document.querySelector("#navList").innerHTML = navItems
     .map(
-      ([label, value]) => `
-        <button class="metric" type="button" data-metric="${label}">
-          <span>${label}</span>
-          <strong>${value}</strong>
+      ([id, label, icon], index) => `
+        <button class="nav-item ${index === 0 ? "active" : ""}" data-view="${id}" type="button" title="${label}">
+          <span aria-hidden="true">${icon}</span>
+          ${label}
         </button>
       `
     )
     .join("");
 }
 
-function getFilteredTasks() {
-  const search = document.querySelector("#searchInput").value.trim().toLowerCase();
-  const status = document.querySelector("#statusFilter").value;
-  const sla = document.querySelector("#slaFilter").value;
-  const type = document.querySelector("#typeFilter").value;
-
-  return tasks.filter((task) => {
-    const matchesSearch =
-      !search ||
-      task.id.toLowerCase().includes(search) ||
-      task.client.toLowerCase().includes(search) ||
-      task.supplier.toLowerCase().includes(search);
-    const matchesStatus = status === "all" || task.status === status;
-    const matchesSla = sla === "all" || task.sla === sla;
-    const matchesType = type === "all" || task.type === type;
-    return matchesSearch && matchesStatus && matchesSla && matchesType;
-  });
-}
-
-function renderTasks() {
-  const filteredTasks = getFilteredTasks();
-  taskTable.innerHTML = filteredTasks
+function renderDashboard() {
+  document.querySelector("#dashboardMetrics").innerHTML = dashboardMetrics
     .map(
-      (task) => `
-        <tr class="${task.id === activeTaskId ? "selected-row" : ""}" data-task-id="${task.id}">
-          <td>
-            <input type="checkbox" aria-label="${task.id} 선택" data-select-task="${task.id}" ${
-              selectedTaskIds.has(task.id) ? "checked" : ""
-            } />
-          </td>
-          <td><span class="status ${task.status}">${statusLabels[task.status]}</span></td>
-          <td class="task-cell">
-            <strong>${task.id}</strong>
-            <span>${task.typeLabel} · ${task.exception}</span>
-          </td>
-          <td class="client-cell">
-            <strong>${task.client}</strong>
-            <span>${task.supplier}</span>
-          </td>
-          <td>${task.assignee}</td>
-          <td><span class="sla ${task.sla}">${slaLabels[task.sla]}</span></td>
-          <td>${task.amount}</td>
-        </tr>
-      `
-    )
-    .join("");
-
-  document.querySelector("#selectAll").checked =
-    filteredTasks.length > 0 && filteredTasks.every((task) => selectedTaskIds.has(task.id));
-}
-
-function renderDetail(taskId) {
-  const task = tasks.find((item) => item.id === taskId);
-  if (!task) return;
-
-  activeTaskId = taskId;
-  emptyDetail.classList.add("hidden");
-  taskDetail.classList.remove("hidden");
-  taskDetail.innerHTML = `
-    <div class="detail-header">
-      <span class="status ${task.status}">${statusLabels[task.status]}</span>
-      <h2>${task.id}</h2>
-      <p class="task-subtitle">${task.client} · ${task.typeLabel}</p>
-    </div>
-    <div class="detail-grid">
-      <div class="detail-item"><span>공급사/연동</span><strong>${task.supplier}</strong></div>
-      <div class="detail-item"><span>담당자</span><strong>${task.assignee}</strong></div>
-      <div class="detail-item"><span>임직원 참조</span><strong>${task.employeeRef}</strong></div>
-      <div class="detail-item"><span>SLA</span><strong>${slaLabels[task.sla]}</strong></div>
-      <div class="detail-item"><span>금액 영향</span><strong>${task.amount}</strong></div>
-      <div class="detail-item"><span>최근 이벤트</span><strong>${task.lastEvent}</strong></div>
-    </div>
-    <div class="audit-box">${task.audit}</div>
-    <div class="detail-actions">
-      <button type="button" data-detail-action="complete">상태 변경</button>
-      <button type="button" data-detail-action="pii">상세 열람</button>
-      <button type="button" data-detail-action="approve">승인 요청</button>
-      <button type="button" data-detail-action="note">감사 메모</button>
-    </div>
-  `;
-  renderTasks();
-}
-
-function renderProfitability() {
-  const metricData = [
-    ["매출", "18.4억", "기간 내 계약 기준"],
-    ["공헌이익", "1.12억", "산식 검토중"],
-    ["평균 마진율", "6.1%", "PM/재무 승인 필요"],
-    ["운영 처리건", "641건", "SLA 초과 7건"]
-  ];
-
-  document.querySelector("#profitMetrics").innerHTML = metricData
-    .map(
-      ([label, value, helper]) => `
-        <div class="profit-card">
+      ([label, value, helper, tone]) => `
+        <button class="metric ${tone}" type="button">
           <span>${label}</span>
           <strong>${value}</strong>
           <small>${helper}</small>
+        </button>
+      `
+    )
+    .join("");
+
+  document.querySelector("#workloadBars").innerHTML = workloadBars
+    .map(
+      ([label, value, color]) => `
+        <div class="bar-row">
+          <div><strong>${label}</strong><span>${value}%</span></div>
+          <div class="bar-track"><i style="width:${value}%; background:${color}"></i></div>
         </div>
       `
     )
     .join("");
 
-  document.querySelector("#profitRows").innerHTML = profitRows
+  renderActionList("#dashboardActions", dashboardActions);
+}
+
+function renderCustomers() {
+  document.querySelector("#customerList").innerHTML = customers
     .map(
-      (row) => `
-        <button class="profit-row" type="button" data-client="${row.client}">
+      (customer, index) => `
+        <button class="entity-row ${index === 0 ? "selected" : ""}" type="button" data-customer="${customer.name}">
           <div>
-            <strong>${row.client}</strong>
-            <p class="task-subtitle">처리 ${row.cases}건 · 예외율 ${row.exceptionRate}% · 투입 ${row.effort}</p>
-            <div class="bar"><span style="width: ${Math.min(row.exceptionRate * 4, 100)}%"></span></div>
+            <strong>${customer.name}</strong>
+            <span>${customer.manager} · ${customer.contract}</span>
           </div>
-          <span class="risk-tag">${row.margin}%</span>
+          <em class="${customer.status === "개선" ? "danger" : customer.status === "주의" ? "warning" : ""}">${customer.margin}</em>
+        </button>
+      `
+    )
+    .join("");
+  renderCustomerDetail(customers[0].name);
+}
+
+function renderCustomerDetail(name) {
+  const customer = customers.find((item) => item.name === name) || customers[0];
+  document.querySelector("#customerDetail").innerHTML = `
+    <div class="detail-header">
+      <span class="status-pill">${customer.tenant}</span>
+      <h2>${customer.name}</h2>
+      <p>${customer.issue} · ${customer.status}</p>
+    </div>
+    <div class="detail-grid">
+      <div><span>담당자</span><strong>${customer.manager}</strong></div>
+      <div><span>계약 상태</span><strong>${customer.contract}</strong></div>
+      <div><span>마진율</span><strong>${customer.margin}</strong></div>
+      <div><span>개인정보</span><strong>마스킹 기본</strong></div>
+      <div><span>접근로그</span><strong>AUD-CUS-2201</strong></div>
+      <div><span>승인</span><strong>상세 열람 사유 필요</strong></div>
+    </div>
+    <div class="notice">고객사 테넌트 범위 밖 상세 조회와 연락처 원문 검색은 PM 승인 필요입니다.</div>
+  `;
+}
+
+function renderProducts() {
+  renderDataTable("#productTable", ["상품명", "공급사", "상태", "마진", "운영 신호", "감사로그"], products);
+}
+
+function renderLogistics() {
+  const labels = {
+    inbound: "입고",
+    outbound: "출고",
+    delivery: "배송",
+    exception: "예외"
+  };
+  document.querySelector("#logisticsBoard").innerHTML = Object.entries(logistics)
+    .map(
+      ([key, rows]) => `
+        <div class="lane">
+          <h3>${labels[key]}</h3>
+          ${rows
+            .map(
+              ([title, item, meta]) => `
+                <div class="lane-card">
+                  <strong>${title}</strong>
+                  <span>${item}</span>
+                  <em>${meta}</em>
+                </div>
+              `
+            )
+            .join("")}
+        </div>
+      `
+    )
+    .join("");
+  renderActionList("#inventoryRisks", inventoryRisks);
+}
+
+function renderPipeline() {
+  document.querySelector("#pipelineBoard").innerHTML = pipeline
+    .map(
+      ([stage, count, amount, names]) => `
+        <div class="pipeline-stage">
+          <div class="stage-head">
+            <strong>${stage}</strong>
+            <span>${count}</span>
+          </div>
+          <div class="stage-amount">${amount}</div>
+          ${names.map((name) => `<button type="button">${name}</button>`).join("")}
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderChats() {
+  document.querySelector("#aiChat").innerHTML = aiMessages.map(renderMessage).join("");
+  document.querySelector("#teamChat").innerHTML = teamMessages
+    .map(([sender, message, audit]) => renderMessage(["assistant", `<b>${sender}</b><br>${message}<small>${audit}</small>`]))
+    .join("");
+  document.querySelector("#chatAuditFeed").innerHTML = teamMessages
+    .map(
+      ([sender, message, audit]) => `
+        <div class="audit-item">
+          <strong>${audit}</strong>
+          <span>${sender}</span>
+          <p>${message}</p>
+        </div>
+      `
+    )
+    .join("");
+
+  document.querySelector("#aiControls").innerHTML = [
+    ["개인정보 입력 방지", "프롬프트와 파일 첨부는 마스킹 기준으로 제한"],
+    ["AI 자동 의사결정 금지", "승인, 반려, 정산 확정은 사람이 검토"],
+    ["로그 보존", "프롬프트/응답 보존기간은 PM 승인 필요"]
+  ]
+    .map(([title, text]) => `<div class="control-item"><strong>${title}</strong><p>${text}</p></div>`)
+    .join("");
+}
+
+function renderMessage([role, message]) {
+  return `
+    <div class="message ${role}">
+      <p>${message}</p>
+    </div>
+  `;
+}
+
+function renderEmployees() {
+  renderDataTable("#employeeTable", ["이름", "조직", "상태", "입사/퇴사일", "결재권한", "보안 상태"], employees);
+  renderEmployeeDetail(employees[0][0]);
+}
+
+function renderEmployeeDetail(name) {
+  const employee = employees.find((item) => item[0] === name) || employees[0];
+  document.querySelector("#employeeDetail").innerHTML = `
+    <div class="detail-header">
+      <span class="status-pill">PII Protected</span>
+      <h2>${employee[0]}</h2>
+      <p>${employee[1]} · ${employee[2]}</p>
+    </div>
+    <div class="detail-grid">
+      <div><span>신상명세</span><strong>마스킹 표시</strong></div>
+      <div><span>인적사항</span><strong>상세 열람 사유 필요</strong></div>
+      <div><span>입사/퇴사</span><strong>${employee[3]}</strong></div>
+      <div><span>결재권한</span><strong>${employee[4]}</strong></div>
+      <div><span>권한 회수</span><strong>${employee[5]}</strong></div>
+      <div><span>감사로그</span><strong>AUD-HR-3310</strong></div>
+    </div>
+    <div class="notice">신상명세 및 민감정보 항목, 보존기간, 퇴사자 데이터 처리범위는 PM 승인 필요입니다.</div>
+  `;
+}
+
+function renderAudit() {
+  renderDataTable("#auditTable", ["로그 ID", "이벤트", "행위자", "대상", "상태", "통제"], auditRows);
+}
+
+function renderDataTable(selector, headers, rows) {
+  document.querySelector(selector).innerHTML = `
+    <table>
+      <thead>
+        <tr>${headers.map((header) => `<th>${header}</th>`).join("")}</tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (row) => `
+              <tr>
+                ${row.map((cell) => `<td>${cell}</td>`).join("")}
+              </tr>
+            `
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderActionList(selector, items) {
+  document.querySelector(selector).innerHTML = items
+    .map(
+      ([title, text, tone]) => `
+        <button class="action-item ${tone || ""}" type="button">
+          <strong>${title}</strong>
+          <span>${text}</span>
         </button>
       `
     )
     .join("");
 }
 
-function renderSecurityControls() {
-  const controls = [
-    ["RBAC", "역할, 테넌트 범위, 승인 상태, 업무 목적을 함께 평가합니다."],
-    ["Tenant Isolation", "고객사/공급사/임직원 데이터는 서버 기준 격리 조건을 적용합니다."],
-    ["PII Access Log", "조회, 검색 노출, 다운로드, 마스킹 해제를 모두 기록합니다."],
-    ["Audit Log", "계약, 포인트, 정산, 권한 변경, 외부 연동 재처리를 증적화합니다."]
-  ];
-
-  document.querySelector("#securityControls").innerHTML = controls
-    .map(
-      ([title, copy]) => `
-        <div class="control-item">
-          <strong>${title}</strong>
-          <p>${copy}</p>
-        </div>
-      `
-    )
-    .join("");
+function showView(viewId) {
+  document.querySelectorAll(".nav-item").forEach((item) => {
+    item.classList.toggle("active", item.dataset.view === viewId);
+  });
+  document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
+  document.querySelector(`#${viewId}View`).classList.add("active");
+  const nav = navItems.find(([id]) => id === viewId);
+  document.querySelector("#pageTitle").textContent = nav ? nav[1] : "ETBS OS";
 }
 
 function showToast(message) {
   toast.textContent = message;
   toast.classList.add("show");
-  window.setTimeout(() => toast.classList.remove("show"), 2400);
+  window.setTimeout(() => toast.classList.remove("show"), 2200);
 }
 
 document.addEventListener("click", (event) => {
   const navItem = event.target.closest(".nav-item");
-  if (navItem) {
-    document.querySelectorAll(".nav-item").forEach((item) => item.classList.remove("active"));
-    document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
-    navItem.classList.add("active");
-    document.querySelector(`#${navItem.dataset.view}View`).classList.add("active");
+  if (navItem) showView(navItem.dataset.view);
+
+  const customerRow = event.target.closest("[data-customer]");
+  if (customerRow) {
+    document.querySelectorAll("[data-customer]").forEach((item) => item.classList.remove("selected"));
+    customerRow.classList.add("selected");
+    renderCustomerDetail(customerRow.dataset.customer);
   }
 
-  const row = event.target.closest("tr[data-task-id]");
-  if (row && !event.target.matches("input")) {
-    renderDetail(row.dataset.taskId);
-  }
-
-  const taskCheckbox = event.target.closest("[data-select-task]");
-  if (taskCheckbox) {
-    const taskId = taskCheckbox.dataset.selectTask;
-    if (taskCheckbox.checked) selectedTaskIds.add(taskId);
-    else selectedTaskIds.delete(taskId);
-    renderTasks();
-  }
-
-  const batchAction = event.target.closest("[data-action]");
-  if (batchAction) {
-    const count = selectedTaskIds.size;
-    showToast(count ? `${count}건 ${batchAction.textContent} 요청을 기록했습니다.` : "선택된 업무가 없습니다.");
-  }
-
-  const detailAction = event.target.closest("[data-detail-action]");
-  if (detailAction) {
-    showToast(`${detailAction.textContent} 이벤트를 감사 로그 대상으로 표시했습니다.`);
-  }
-
-  const profitRow = event.target.closest("[data-client]");
-  if (profitRow) {
-    document.querySelector(".nav-item[data-view='operations']").click();
-    document.querySelector("#searchInput").value = profitRow.dataset.client;
-    renderTasks();
-    showToast(`${profitRow.dataset.client} 관련 업무로 이동했습니다.`);
-  }
+  if (event.target.closest("#auditButton")) showView("audit");
+  if (event.target.closest("#refreshButton")) showToast("ETBS OS 화면 데이터를 새로고침했습니다.");
+  if (event.target.closest("#attachButton")) showToast("파일 첨부는 로그 기록과 다운로드 권한 검증 대상입니다.");
 });
 
-document.querySelector("#selectAll").addEventListener("change", (event) => {
-  getFilteredTasks().forEach((task) => {
-    if (event.target.checked) selectedTaskIds.add(task.id);
-    else selectedTaskIds.delete(task.id);
-  });
-  renderTasks();
+document.querySelector("#aiSend").addEventListener("click", () => {
+  const input = document.querySelector("#aiPrompt");
+  if (!input.value.trim()) return;
+  aiMessages.push(["user", input.value.trim()]);
+  aiMessages.push(["assistant", "요청을 접수했습니다. 개인정보 원문 없이 집계 기준으로 답변하며, 실행 액션은 승인 후 처리됩니다."]);
+  input.value = "";
+  renderChats();
+  showToast("AI 프롬프트 로그 AUD-AI-9001을 기록했습니다.");
 });
 
-["#searchInput", "#statusFilter", "#slaFilter", "#typeFilter"].forEach((selector) => {
-  document.querySelector(selector).addEventListener("input", renderTasks);
+document.querySelector("#teamSend").addEventListener("click", () => {
+  const input = document.querySelector("#teamMessage");
+  if (!input.value.trim()) return;
+  teamMessages.push(["운영팀", input.value.trim(), `AUD-CHAT-${780 + teamMessages.length}`]);
+  input.value = "";
+  renderChats();
+  showToast("직원 채팅 로그를 기록했습니다.");
 });
 
-document.querySelector("#refreshButton").addEventListener("click", () => {
-  renderMetrics();
-  renderTasks();
-  showToast("업무 큐를 새로고침했습니다.");
-});
-
-document.querySelector("#approvalButton").addEventListener("click", () => {
-  document.querySelector("#statusFilter").value = "pending_approval";
-  document.querySelector(".nav-item[data-view='operations']").click();
-  renderTasks();
-});
-
-renderMetrics();
-renderTasks();
-renderProfitability();
-renderSecurityControls();
+renderNav();
+renderDashboard();
+renderCustomers();
+renderProducts();
+renderLogistics();
+renderPipeline();
+renderChats();
+renderEmployees();
+renderAudit();

@@ -13,167 +13,248 @@
           <div class="brand-mark" aria-hidden="true">E</div>
           <div>
             <strong>ETBS OS</strong>
-            <span>Enterprise CRM</span>
+            <span>Enterprise Total Benefit Suite</span>
           </div>
         </div>
 
-        <nav class="nav-list">
-          <button class="nav-item active" data-view="operations" type="button" title="Operations">
-            <span aria-hidden="true">□</span>
-            Operations
-          </button>
-          <button class="nav-item" data-view="profitability" type="button" title="Dashboard">
-            <span aria-hidden="true">↗</span>
-            Dashboard
-          </button>
-          <button class="nav-item" data-view="security" type="button" title="Security">
-            <span aria-hidden="true">◇</span>
-            Security
-          </button>
-        </nav>
+        <nav class="nav-list" id="navList" aria-label="주요 메뉴"></nav>
 
         <div class="sidebar-meta">
-          <span>Workspace</span>
-          <strong>Ezenu CRM OS MVP</strong>
+          <span>Audit mode</span>
+          <strong>RBAC · Tenant · Log</strong>
         </div>
       </aside>
 
       <main class="main">
         <header class="topbar">
           <div>
-            <p class="eyebrow">MVP Operations Console</p>
-            <h1>ETBS OS</h1>
+            <p class="eyebrow">Ezenu Enterprise OS</p>
+            <h1 id="pageTitle">대시보드</h1>
           </div>
           <div class="top-actions">
             <button class="icon-button" type="button" title="새로고침" id="refreshButton">↻</button>
-            <button class="primary-button" type="button" id="approvalButton">승인 대기 검토</button>
+            <button class="primary-button" type="button" id="auditButton">감사 로그 보기</button>
           </div>
         </header>
 
-        <section class="view active" id="operationsView" aria-label="Operations Console">
-          <div class="metric-strip" id="operationsMetrics"></div>
+        <section class="view active" id="dashboardView" aria-label="대시보드">
+          <div class="metric-strip" id="dashboardMetrics"></div>
 
-          <section class="toolbar" aria-label="업무 필터">
-            <label>
-              <span>검색</span>
-              <input id="searchInput" type="search" placeholder="업무 ID, 고객사, 공급사" />
-            </label>
-            <label>
-              <span>상태</span>
-              <select id="statusFilter">
-                <option value="all">전체</option>
-                <option value="new">신규</option>
-                <option value="assigned">배정</option>
-                <option value="in_progress">진행</option>
-                <option value="pending_approval">승인 대기</option>
-                <option value="blocked">보류</option>
-                <option value="exception">예외</option>
-                <option value="completed">완료</option>
-              </select>
-            </label>
-            <label>
-              <span>SLA</span>
-              <select id="slaFilter">
-                <option value="all">전체</option>
-                <option value="normal">정상</option>
-                <option value="risk">위험</option>
-                <option value="breached">초과</option>
-              </select>
-            </label>
-            <label>
-              <span>업무유형</span>
-              <select id="typeFilter">
-                <option value="all">전체</option>
-                <option value="CS">CS</option>
-                <option value="Point">포인트</option>
-                <option value="Settlement">정산</option>
-                <option value="Integration">연동</option>
-                <option value="Review">심사</option>
-              </select>
-            </label>
-          </section>
-
-          <section class="work-surface">
-            <div class="table-panel">
+          <div class="dashboard-layout">
+            <section class="panel wide">
               <div class="panel-header">
                 <div>
-                  <h2>업무 큐</h2>
-                  <p>권한 범위 내 업무를 필터링하고 일괄 처리합니다.</p>
+                  <h2>운영 처리량과 마진 추이</h2>
+                  <p>월별 업무 처리량, 마진율, 예외율을 함께 표시합니다.</p>
                 </div>
-                <div class="batch-actions" id="batchActions">
-                  <button type="button" data-action="assign">배정</button>
-                  <button type="button" data-action="retry">재시도</button>
-                  <button type="button" data-action="hold">보류</button>
-                </div>
+                <span class="period-chip">최근 6개월</span>
               </div>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th><input id="selectAll" type="checkbox" aria-label="전체 선택" /></th>
-                      <th>상태</th>
-                      <th>업무</th>
-                      <th>고객사</th>
-                      <th>담당자</th>
-                      <th>SLA</th>
-                      <th>금액 영향</th>
-                    </tr>
-                  </thead>
-                  <tbody id="taskTable"></tbody>
-                </table>
+              <div class="chart-combo">
+                <svg class="line-chart" viewBox="0 0 640 220" role="img" aria-label="월별 마진율 추이">
+                  <defs>
+                    <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stop-color="#0f766e" stop-opacity="0.22" />
+                      <stop offset="100%" stop-color="#0f766e" stop-opacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path class="area-path" d="M34 164 L132 146 L230 151 L328 112 L426 92 L524 78 L620 66 L620 204 L34 204 Z" />
+                  <path class="line-path" d="M34 164 L132 146 L230 151 L328 112 L426 92 L524 78 L620 66" />
+                  <g class="chart-grid">
+                    <line x1="34" y1="204" x2="620" y2="204" />
+                    <line x1="34" y1="154" x2="620" y2="154" />
+                    <line x1="34" y1="104" x2="620" y2="104" />
+                    <line x1="34" y1="54" x2="620" y2="54" />
+                  </g>
+                  <g class="chart-labels">
+                    <text x="28" y="218">1월</text>
+                    <text x="126" y="218">2월</text>
+                    <text x="224" y="218">3월</text>
+                    <text x="322" y="218">4월</text>
+                    <text x="420" y="218">5월</text>
+                    <text x="518" y="218">6월</text>
+                  </g>
+                </svg>
+                <div class="bar-stack" id="workloadBars"></div>
               </div>
-            </div>
-
-            <aside class="detail-panel" aria-label="업무 상세">
-              <div id="emptyDetail" class="empty-detail">
-                <strong>업무를 선택하세요</strong>
-                <span>상태 변경, 개인정보 열람 사유, 감사 로그 기준을 확인할 수 있습니다.</span>
-              </div>
-              <div id="taskDetail" class="task-detail hidden"></div>
-            </aside>
-          </section>
-        </section>
-
-        <section class="view" id="profitabilityView" aria-label="Profitability Dashboard">
-          <div class="dashboard-grid">
-            <section class="summary-panel">
-              <div class="panel-header">
-                <div>
-                  <h2>수익성 요약</h2>
-                  <p>고객사별 마진과 운영 투입량을 함께 봅니다.</p>
-                </div>
-              </div>
-              <div class="profit-metrics" id="profitMetrics"></div>
             </section>
-            <section class="ranking-panel">
-              <div class="panel-header">
+
+            <section class="panel">
+              <div class="panel-header compact">
                 <div>
-                  <h2>저마진 후보</h2>
-                  <p>운영 예외율과 처리시간이 높은 고객사입니다.</p>
+                  <h2>수익성 분포</h2>
+                  <p>고객사별 마진 상태</p>
                 </div>
               </div>
-              <div id="profitRows" class="profit-rows"></div>
+              <div class="donut-wrap">
+                <div class="donut" aria-label="마진 상태 분포"></div>
+                <div class="legend-list">
+                  <span><i class="legend good"></i>정상 58%</span>
+                  <span><i class="legend warn"></i>주의 29%</span>
+                  <span><i class="legend bad"></i>개선 13%</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header compact">
+                <div>
+                  <h2>우선 조치</h2>
+                  <p>오늘의 병목 신호</p>
+                </div>
+              </div>
+              <div class="action-list" id="dashboardActions"></div>
             </section>
           </div>
         </section>
 
-        <section class="view" id="securityView" aria-label="Security Baseline">
-          <div class="security-grid">
-            <section>
-              <h2>Security & Audit Baseline</h2>
-              <p>RBAC, 테넌트 격리, 개인정보 접근로그, 감사로그는 MVP 기본 요구입니다.</p>
-              <div class="control-list" id="securityControls"></div>
+        <section class="view" id="customersView" aria-label="고객관리">
+          <div class="split-layout">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>고객사 360</h2>
+                  <p>계약, 담당자, 이슈, 수익성을 한 화면에서 봅니다.</p>
+                </div>
+                <button class="secondary-button" type="button">고객 등록</button>
+              </div>
+              <div class="list" id="customerList"></div>
             </section>
-            <section>
-              <h2>PM 승인 필요</h2>
-              <p>개인정보/민감정보 항목과 처리범위는 확정하지 않습니다.</p>
-              <ul class="approval-list">
-                <li>민감정보 포함 여부와 처리 목적</li>
-                <li>외부 연동별 개인정보 전송 항목</li>
-                <li>보존기간, 파기 방식, 외감 제출 형식</li>
-                <li>인증/인가 및 로그 저장 아키텍처</li>
-              </ul>
+            <section class="panel detail" id="customerDetail"></section>
+          </div>
+        </section>
+
+        <section class="view" id="productsView" aria-label="제품관리">
+          <div class="table-layout">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>판매상품 관리</h2>
+                  <p>공급사, 판매상태, 정산 조건, 승인 상태를 관리합니다.</p>
+                </div>
+                <button class="secondary-button" type="button">상품 승인 요청</button>
+              </div>
+              <div class="data-table" id="productTable"></div>
             </section>
+          </div>
+        </section>
+
+        <section class="view" id="logisticsView" aria-label="배송 및 입출고 현황">
+          <div class="split-layout">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>배송 및 입출고 현황</h2>
+                  <p>입고, 출고, 배송 지연, 재고 위험을 실시간 큐로 봅니다.</p>
+                </div>
+              </div>
+              <div class="kanban" id="logisticsBoard"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-header compact">
+                <div>
+                  <h2>재고 위험</h2>
+                  <p>품절과 지연 가능성이 높은 상품</p>
+                </div>
+              </div>
+              <div class="action-list" id="inventoryRisks"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="pipelineView" aria-label="영업 파이프라인">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>영업 파이프라인</h2>
+                <p>리드부터 계약까지 단계별 금액과 다음 액션을 관리합니다.</p>
+              </div>
+              <button class="secondary-button" type="button">기회 등록</button>
+            </div>
+            <div class="pipeline" id="pipelineBoard"></div>
+          </div>
+        </section>
+
+        <section class="view" id="aiView" aria-label="AI 채팅방">
+          <div class="chat-layout">
+            <section class="panel chat-panel">
+              <div class="panel-header">
+                <div>
+                  <h2>AI 채팅방</h2>
+                  <p>업무 큐, 고객, 정산, 보안 기준을 바탕으로 운영 질문을 처리합니다.</p>
+                </div>
+                <span class="status-pill">검토 모드</span>
+              </div>
+              <div class="chat-stream" id="aiChat"></div>
+              <div class="composer">
+                <input id="aiPrompt" type="text" placeholder="예: SLA 초과 고객사와 원인을 요약해줘" />
+                <button class="primary-button" type="button" id="aiSend">전송</button>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header compact">
+                <div>
+                  <h2>AI 통제</h2>
+                  <p>민감정보와 자동 의사결정은 PM 승인 필요</p>
+                </div>
+              </div>
+              <div class="control-list" id="aiControls"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="teamChatView" aria-label="직원간 채팅방">
+          <div class="chat-layout">
+            <section class="panel chat-panel">
+              <div class="panel-header">
+                <div>
+                  <h2>직원간 채팅방</h2>
+                  <p>대화 로그와 파일 첨부 이력을 감사 기준으로 보존합니다.</p>
+                </div>
+                <button class="secondary-button" type="button" id="attachButton">파일 첨부</button>
+              </div>
+              <div class="chat-stream" id="teamChat"></div>
+              <div class="composer">
+                <input id="teamMessage" type="text" placeholder="팀 메시지 입력" />
+                <button class="primary-button" type="button" id="teamSend">기록</button>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header compact">
+                <div>
+                  <h2>대화 로그</h2>
+                  <p>검색 가능 감사 기록</p>
+                </div>
+              </div>
+              <div class="audit-feed" id="chatAuditFeed"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="employeesView" aria-label="임직원 관리">
+          <div class="split-layout">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>임직원 관리</h2>
+                  <p>신상명세, 입사/퇴사, 인적사항, 결재권한을 관리합니다.</p>
+                </div>
+                <button class="secondary-button" type="button">입사 등록</button>
+              </div>
+              <div class="data-table" id="employeeTable"></div>
+            </section>
+            <section class="panel detail" id="employeeDetail"></section>
+          </div>
+        </section>
+
+        <section class="view" id="auditView" aria-label="감사 로그">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>보안 및 감사 로그</h2>
+                <p>개인정보 접근, 권한 변경, 파일 첨부, 채팅 로그를 추적합니다.</p>
+              </div>
+            </div>
+            <div class="audit-table" id="auditTable"></div>
           </div>
         </section>
       </main>
