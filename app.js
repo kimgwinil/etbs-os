@@ -4,8 +4,6 @@ const navItems = [
   ["products", "판매상품", "◫"],
   ["logistics", "배송/입출고", "⇄"],
   ["pipeline", "영업 파이프라인", "◇"],
-  ["ai", "AI 채팅방", "✦"],
-  ["teamChat", "직원 채팅방", "☰"],
   ["employees", "임직원 관리", "♢"],
   ["audit", "보안/감사", "◷"]
 ];
@@ -427,7 +425,33 @@ document.addEventListener("click", (event) => {
   if (event.target.closest("#auditButton")) showView("audit");
   if (event.target.closest("#refreshButton")) showToast("ETBS OS 화면 데이터를 새로고침했습니다.");
   if (event.target.closest("#attachButton")) showToast("파일 첨부는 로그 기록과 다운로드 권한 검증 대상입니다.");
+
+  const chatLauncher = event.target.closest("[data-chat-open]");
+  if (chatLauncher) openChatPopup(chatLauncher.dataset.chatOpen);
+
+  const chatClose = event.target.closest("[data-chat-close]");
+  if (chatClose) closeChatPopup(chatClose.dataset.chatClose);
+
+  if (event.target.classList.contains("chat-backdrop")) closeAllChatPopups();
 });
+
+function openChatPopup(type) {
+  closeAllChatPopups();
+  document.querySelector("#chatBackdrop").classList.add("active");
+  document.querySelector(`#${type}Popup`).classList.add("active");
+}
+
+function closeChatPopup(type) {
+  document.querySelector(`#${type}Popup`).classList.remove("active");
+  if (!document.querySelector(".chat-popup.active")) {
+    document.querySelector("#chatBackdrop").classList.remove("active");
+  }
+}
+
+function closeAllChatPopups() {
+  document.querySelectorAll(".chat-popup").forEach((popup) => popup.classList.remove("active"));
+  document.querySelector("#chatBackdrop").classList.remove("active");
+}
 
 document.querySelector("#aiSend").addEventListener("click", () => {
   const input = document.querySelector("#aiPrompt");

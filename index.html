@@ -174,62 +174,6 @@
           </div>
         </section>
 
-        <section class="view" id="aiView" aria-label="AI 채팅방">
-          <div class="chat-layout">
-            <section class="panel chat-panel">
-              <div class="panel-header">
-                <div>
-                  <h2>AI 채팅방</h2>
-                  <p>업무 큐, 고객, 정산, 보안 기준을 바탕으로 운영 질문을 처리합니다.</p>
-                </div>
-                <span class="status-pill">검토 모드</span>
-              </div>
-              <div class="chat-stream" id="aiChat"></div>
-              <div class="composer">
-                <input id="aiPrompt" type="text" placeholder="예: SLA 초과 고객사와 원인을 요약해줘" />
-                <button class="primary-button" type="button" id="aiSend">전송</button>
-              </div>
-            </section>
-            <section class="panel">
-              <div class="panel-header compact">
-                <div>
-                  <h2>AI 통제</h2>
-                  <p>민감정보와 자동 의사결정은 PM 승인 필요</p>
-                </div>
-              </div>
-              <div class="control-list" id="aiControls"></div>
-            </section>
-          </div>
-        </section>
-
-        <section class="view" id="teamChatView" aria-label="직원간 채팅방">
-          <div class="chat-layout">
-            <section class="panel chat-panel">
-              <div class="panel-header">
-                <div>
-                  <h2>직원간 채팅방</h2>
-                  <p>대화 로그와 파일 첨부 이력을 감사 기준으로 보존합니다.</p>
-                </div>
-                <button class="secondary-button" type="button" id="attachButton">파일 첨부</button>
-              </div>
-              <div class="chat-stream" id="teamChat"></div>
-              <div class="composer">
-                <input id="teamMessage" type="text" placeholder="팀 메시지 입력" />
-                <button class="primary-button" type="button" id="teamSend">기록</button>
-              </div>
-            </section>
-            <section class="panel">
-              <div class="panel-header compact">
-                <div>
-                  <h2>대화 로그</h2>
-                  <p>검색 가능 감사 기록</p>
-                </div>
-              </div>
-              <div class="audit-feed" id="chatAuditFeed"></div>
-            </section>
-          </div>
-        </section>
-
         <section class="view" id="employeesView" aria-label="임직원 관리">
           <div class="split-layout">
             <section class="panel">
@@ -259,6 +203,64 @@
         </section>
       </main>
     </div>
+
+    <div class="chat-backdrop" id="chatBackdrop" aria-hidden="true"></div>
+
+    <div class="chat-launcher" aria-label="채팅 바로가기">
+      <button class="chat-icon ai-icon" type="button" data-chat-open="ai" title="AI 채팅방">
+        <span aria-hidden="true">✦</span>
+        <strong>AI</strong>
+      </button>
+      <button class="chat-icon team-icon" type="button" data-chat-open="team" title="직원 채팅방">
+        <span aria-hidden="true">☰</span>
+        <strong>팀</strong>
+      </button>
+    </div>
+
+    <section class="chat-popup" id="aiPopup" aria-label="AI 채팅방 팝업">
+      <div class="popup-header">
+        <div>
+          <h2>AI 채팅방</h2>
+          <p>업무 큐, 고객, 정산, 보안 기준을 바탕으로 답변합니다.</p>
+        </div>
+        <button class="icon-button" type="button" data-chat-close="ai" title="닫기">×</button>
+      </div>
+      <div class="assistant-layout">
+        <div class="chat-stream" id="aiChat"></div>
+        <aside class="assistant-side">
+          <span class="status-pill">검토 모드</span>
+          <div class="control-list" id="aiControls"></div>
+        </aside>
+      </div>
+      <div class="composer">
+        <input id="aiPrompt" type="text" placeholder="예: SLA 초과 고객사와 원인을 요약해줘" />
+        <button class="primary-button" type="button" id="aiSend">전송</button>
+      </div>
+    </section>
+
+    <section class="chat-popup" id="teamPopup" aria-label="직원 채팅방 팝업">
+      <div class="popup-header">
+        <div>
+          <h2>직원 채팅방</h2>
+          <p>대화 로그와 파일 첨부 이력을 감사 기준으로 보존합니다.</p>
+        </div>
+        <div class="popup-actions">
+          <button class="secondary-button" type="button" id="attachButton">파일 첨부</button>
+          <button class="icon-button" type="button" data-chat-close="team" title="닫기">×</button>
+        </div>
+      </div>
+      <div class="assistant-layout">
+        <div class="chat-stream" id="teamChat"></div>
+        <aside class="assistant-side">
+          <span class="status-pill">로그 보존</span>
+          <div class="audit-feed" id="chatAuditFeed"></div>
+        </aside>
+      </div>
+      <div class="composer">
+        <input id="teamMessage" type="text" placeholder="팀 메시지 입력" />
+        <button class="primary-button" type="button" id="teamSend">기록</button>
+      </div>
+    </section>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="./app.js"></script>
