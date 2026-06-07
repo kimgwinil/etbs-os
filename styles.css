@@ -917,12 +917,51 @@ input {
     flex-direction: row;
     align-items: center;
     overflow-x: auto;
-    padding: 12px;
+    gap: 14px;
+    min-height: 72px;
+    height: 72px;
+    padding: 10px 14px;
+  }
+
+  .brand {
+    flex: 0 0 170px;
+    height: 52px;
+    min-width: 170px;
+    padding: 0;
+  }
+
+  .brand-mark {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+  }
+
+  .brand strong {
+    font-size: 14px;
+    line-height: 1.15;
+  }
+
+  .brand span {
+    max-width: 112px;
+    line-height: 1.15;
   }
 
   .nav-list {
+    display: grid;
     grid-auto-flow: column;
     grid-auto-columns: max-content;
+    align-items: center;
+    gap: 8px;
+    min-height: 52px;
+  }
+
+  .nav-item {
+    width: auto;
+    height: 46px;
+    min-height: 46px;
+    flex: 0 0 auto;
+    align-items: center;
+    white-space: nowrap;
   }
 
   .sidebar-meta {
