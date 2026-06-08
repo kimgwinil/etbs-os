@@ -28,7 +28,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -513,6 +514,154 @@ h3 {
 .approval-summary strong {
   color: var(--teal);
   font-size: 18px;
+}
+
+.employee-service-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.72fr);
+  gap: 14px;
+}
+
+.employee-home-hero,
+.employee-document-panel {
+  grid-column: 1 / -1;
+}
+
+.employee-leave-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+
+.leave-summary-card,
+.document-template-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.leave-summary-card {
+  padding: 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.leave-summary-card.primary {
+  border-color: #c7ddda;
+  background: #eef6f5;
+}
+
+.leave-summary-card span,
+.leave-summary-card em,
+.document-template-card em,
+.approval-line-option em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.leave-summary-card strong {
+  color: var(--teal);
+  font-size: 22px;
+}
+
+.document-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+
+.document-template-card {
+  min-height: 132px;
+  padding: 14px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  text-align: left;
+  color: var(--ink);
+}
+
+.document-template-card:hover,
+.document-template-card.active {
+  border-color: var(--teal);
+  background: #eef6f5;
+}
+
+.document-template-card > span {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #123c3a;
+  color: white;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+}
+
+.employee-document-form {
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.document-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.document-reason-field textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.muted-field {
+  opacity: 0.55;
+}
+
+.approval-line-picker {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.approval-line-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.approval-line-option {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.approval-line-option span {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.employee-submit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.empty-state {
+  padding: 18px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .selected-row {
@@ -1740,7 +1889,10 @@ input {
 }
 
 .settings-modal-form input,
-.settings-modal-form select {
+.settings-modal-form select,
+.settings-field input,
+.settings-field select,
+.settings-field textarea {
   min-height: 38px;
   width: 100%;
   border: 1px solid var(--line);
@@ -1748,6 +1900,10 @@ input {
   background: #ffffff;
   color: var(--ink);
   padding: 0 10px;
+}
+
+.settings-field textarea {
+  padding: 10px;
 }
 
 .settings-field em {
@@ -1820,6 +1976,12 @@ input {
 
 @media (max-width: 1180px) {
   .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .employee-service-layout,
+  .document-form-grid,
+  .approval-line-options {
     grid-template-columns: 1fr;
   }
 
@@ -1920,6 +2082,11 @@ input {
 @media (max-width: 900px) {
   .dashboard-layout {
     grid-template-columns: 1fr;
+  }
+
+  .employee-leave-summary,
+  .document-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dashboard-layout .panel:nth-child(3),
@@ -2041,7 +2208,9 @@ input {
     grid-template-columns: 1fr;
   }
 
-  .hr-summary {
+  .hr-summary,
+  .employee-leave-summary,
+  .document-card-grid {
     grid-template-columns: 1fr;
   }
 

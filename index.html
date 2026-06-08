@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ETBS OS</title>
-    <link rel="stylesheet" href="./styles.css?v=20260609-current-edit" />
+    <link rel="stylesheet" href="./styles.css?v=20260609-employee-service" />
   </head>
   <body>
     <div class="app-shell">
@@ -29,14 +29,59 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">Ezenu Enterprise OS</p>
-            <h1 id="pageTitle">대시보드</h1>
+            <h1 id="pageTitle">내 업무</h1>
           </div>
           <div class="top-actions">
             <button class="icon-button" type="button" title="새로고침" id="refreshButton">↻</button>
           </div>
         </header>
 
-        <section class="view active" id="dashboardView" aria-label="대시보드">
+        <section class="view active" id="selfserviceView" aria-label="내 업무">
+          <div class="employee-service-layout">
+            <section class="panel employee-home-hero">
+              <div class="panel-header">
+                <div>
+                  <h2>내 업무</h2>
+                  <p>휴가원, 보고서, 협조전 등 전자결재 문서를 직접 작성하고 상신합니다.</p>
+                </div>
+                <span class="period-chip" id="employeeServiceUser"></span>
+              </div>
+              <div class="employee-leave-summary" id="employeeLeaveSummary"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header compact">
+                <div>
+                  <h2>전자결재 서식</h2>
+                  <p>필요한 문서를 선택하면 작성 양식이 자동으로 준비됩니다.</p>
+                </div>
+              </div>
+              <div class="document-card-grid" id="documentTemplateCards"></div>
+            </section>
+
+            <section class="panel employee-document-panel">
+              <div class="panel-header">
+                <div>
+                  <h2 id="employeeDocumentTitle">전자결재 문서 작성</h2>
+                  <p id="employeeDocumentHelp">서식을 선택하고 결재라인을 지정한 뒤 상신합니다.</p>
+                </div>
+              </div>
+              <div class="employee-document-form" id="employeeDocumentForm"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header compact">
+                <div>
+                  <h2>내 상신 현황</h2>
+                  <p>내가 올린 전자결재 문건의 현재 상태입니다.</p>
+                </div>
+              </div>
+              <div class="data-table" id="myApprovalTable"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="dashboardView" aria-label="대시보드">
           <div class="metric-strip" id="dashboardMetrics"></div>
 
           <div class="dashboard-layout">
@@ -398,6 +443,6 @@
     </section>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=20260609-current-edit"></script>
+    <script src="./app.js?v=20260609-employee-service"></script>
   </body>
 </html>

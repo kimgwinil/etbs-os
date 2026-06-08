@@ -1,4 +1,5 @@
 const navItems = [
+  ["selfservice", "내 업무", "◉"],
   ["dashboard", "대시보드", "▦"],
   ["customers", "고객관리", "◎"],
   ["products", "판매상품", "◫"],
@@ -123,6 +124,7 @@ const hrLeaveUsage = Object.fromEntries(employees.map((employee, index) => [empl
 const hrLeaveRequests = [];
 
 const currentProfitCostUser = { name: "김권일", role: "Master" };
+const currentEmployeeAccount = { employeeId: "EMP-002", role: "일반 임직원" };
 const profitCostSettings = {
   productCostRate: 0.08,
   sellingAdminRate: 0.09,
@@ -258,6 +260,39 @@ const chatMembers = [
 ];
 
 const currentChatUser = { id: "ME", name: "김권일", team: "PM", role: "작성자" };
+
+const employeeDocumentTemplates = [
+  {
+    type: "vacation",
+    title: "휴가원",
+    icon: "☑",
+    help: "총연차와 잔여연차를 확인하고 연차 신청서를 자동 작성합니다.",
+    defaultReason: "개인 연차 사용 신청"
+  },
+  {
+    type: "report",
+    title: "보고서",
+    icon: "▤",
+    help: "업무 진행, 출장, 결과 보고서를 작성해 결재를 올립니다.",
+    defaultReason: "업무 보고 상신"
+  },
+  {
+    type: "cooperation",
+    title: "협조전",
+    icon: "⇄",
+    help: "부서 간 협조 요청과 담당자 확인이 필요한 문서입니다.",
+    defaultReason: "부서 협조 요청"
+  },
+  {
+    type: "expense",
+    title: "지출결의서",
+    icon: "₩",
+    help: "업무 비용 집행과 증빙 결재를 요청합니다.",
+    defaultReason: "업무 비용 지출 결의"
+  }
+];
+
+let activeEmployeeDocumentType = "vacation";
 
 const teamRooms = [
   {
@@ -495,6 +530,252 @@ function renderNav() {
       `
     )
     .join("");
+}
+
+function getEmployeeById(employeeId) {
+  return employees.find((employee) => employee[0] === employeeId) || employees[0];
+}
+
+function getEmployeeDisplayLabel(employeeId = currentEmployeeAccount.employeeId) {
+  const employee = getEmployeeById(employeeId);
+  const profile = employeeProfiles.find((item) => item.id === employee[0]);
+  return `${employee[3]} ${employee[1]} · ${profile?.rank || "사원"} · ${currentEmployeeAccount.role}`;
+}
+
+function getCurrentEmployeeRecord() {
+  return getHrEmployeeRecord(getEmployeeById(currentEmployeeAccount.employeeId));
+}
+
+function getTodayDateValue() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function getApprovalCandidates() {
+  return employees
+    .filter((employee) => employee[0] !== currentEmployeeAccount.employeeId && employee[4] === "재직")
+    .slice(0, 8)
+    .map((employee) => ({
+      id: employee[0],
+      label: `${employee[3]} ${employee[1]}`,
+      role: employee[6]
+    }));
+}
+
+function renderEmployeeSelfService() {
+  const record = getCurrentEmployeeRecord();
+  const template = employeeDocumentTemplates.find((item) => item.type === activeEmployeeDocumentType) || employeeDocumentTemplates[0];
+  document.querySelector("#employeeServiceUser").textContent = getEmployeeDisplayLabel();
+  document.querySelector("#employeeLeaveSummary").innerHTML = `
+    <div class="leave-summary-card primary">
+      <span>총연차</span>
+      <strong>${record.annualLeave}일</strong>
+      <em>입사일 ${record.hireDate} 기준 자동계산</em>
+    </div>
+    <div class="leave-summary-card">
+      <span>사용연차</span>
+      <strong>${record.usedLeave}일</strong>
+      <em>승인 완료 기준</em>
+    </div>
+    <div class="leave-summary-card">
+      <span>승인대기</span>
+      <strong>${record.pendingLeave}일</strong>
+      <em>상신 후 결재 전</em>
+    </div>
+    <div class="leave-summary-card primary">
+      <span>잔여연차</span>
+      <strong>${record.remainingLeave}일</strong>
+      <em>휴가원 작성 시 자동 반영</em>
+    </div>
+  `;
+  document.querySelector("#documentTemplateCards").innerHTML = employeeDocumentTemplates
+    .map(
+      (item) => `
+        <button class="document-template-card ${item.type === activeEmployeeDocumentType ? "active" : ""}" type="button" data-doc-template="${item.type}">
+          <span>${item.icon}</span>
+          <strong>${item.title}</strong>
+          <em>${item.help}</em>
+        </button>
+      `
+    )
+    .join("");
+  document.querySelector("#employeeDocumentTitle").textContent = `${template.title} 작성`;
+  document.querySelector("#employeeDocumentHelp").textContent = template.help;
+  renderEmployeeDocumentForm(template, record);
+  renderMyApprovalTable();
+}
+
+function renderEmployeeDocumentForm(template, record) {
+  const isVacation = template.type === "vacation";
+  const titleValue = isVacation ? `휴가원 - ${record.name}` : `${template.title} - ${record.name}`;
+  const candidates = getApprovalCandidates();
+  document.querySelector("#employeeDocumentForm").innerHTML = `
+    <div class="document-form-grid">
+      <label class="settings-field">
+        <span>문서종류</span>
+        <input type="text" value="${template.title}" data-employee-doc-field="docTypeLabel" readonly />
+        <em>서식 카드 선택 시 자동 변경됩니다.</em>
+      </label>
+      <label class="settings-field">
+        <span>상신자</span>
+        <input type="text" value="${getEmployeeDisplayLabel()}" readonly />
+        <em>로그인 임직원 기준 자동 입력</em>
+      </label>
+      <label class="settings-field">
+        <span>제목</span>
+        <input type="text" value="${titleValue}" data-employee-doc-field="title" />
+        <em>결재 목록에 표시됩니다.</em>
+      </label>
+      <label class="settings-field">
+        <span>신청일</span>
+        <input type="date" value="${getTodayDateValue()}" data-employee-doc-field="requestDate" />
+        <em>상신 기준일</em>
+      </label>
+      <label class="settings-field ${isVacation ? "" : "muted-field"}">
+        <span>휴가 시작일</span>
+        <input type="date" value="${getTodayDateValue()}" data-employee-doc-field="startDate" ${isVacation ? "" : "disabled"} />
+        <em>${isVacation ? "휴가원 자동작성 필드" : "휴가원에서 사용"}</em>
+      </label>
+      <label class="settings-field ${isVacation ? "" : "muted-field"}">
+        <span>휴가 일수</span>
+        <input type="number" min="1" max="${Math.max(1, record.remainingLeave)}" value="1" data-employee-doc-field="leaveDays" ${isVacation ? "" : "disabled"} />
+        <em>잔여연차 ${record.remainingLeave}일 이내</em>
+      </label>
+      <label class="settings-field">
+        <span>총연차</span>
+        <input type="text" value="${record.annualLeave}일" readonly />
+        <em>본인 기준 자동 표시</em>
+      </label>
+      <label class="settings-field">
+        <span>잔여연차</span>
+        <input type="text" value="${record.remainingLeave}일" readonly />
+        <em>상신 가능 여부 확인</em>
+      </label>
+    </div>
+    <label class="settings-field document-reason-field">
+      <span>내용/사유</span>
+      <textarea data-employee-doc-field="reason">${template.defaultReason}</textarea>
+      <em>결재자에게 전달되는 본문입니다.</em>
+    </label>
+    <section class="approval-line-picker">
+      <div class="settings-modal-section-title">
+        <strong>결재라인 지정</strong>
+        <span>필요한 결재자를 선택한 순서 후보로 상신합니다.</span>
+      </div>
+      <div class="approval-line-options">
+        ${candidates
+          .map(
+            (candidate, index) => `
+              <label class="approval-line-option">
+                <input type="checkbox" data-employee-approver="${candidate.id}" ${index < 2 ? "checked" : ""} />
+                <span>${candidate.label}</span>
+                <em>${candidate.role}</em>
+              </label>
+            `
+          )
+          .join("")}
+      </div>
+    </section>
+    <div class="employee-submit-actions">
+      <button class="primary-button" type="button" data-submit-employee-document>상신</button>
+      <button class="secondary-button" type="button" data-reset-employee-document>작성 초기화</button>
+    </div>
+  `;
+}
+
+function renderMyApprovalTable() {
+  const currentEmployee = getEmployeeById(currentEmployeeAccount.employeeId);
+  const requester = `${currentEmployee[3]} ${currentEmployee[1]}`;
+  const rows = approvalDocuments
+    .filter((doc) => doc.requester === requester)
+    .map((doc) => [doc.id, doc.title, doc.menu, doc.status, doc.nextApprover, doc.reason]);
+  document.querySelector("#myApprovalTable").innerHTML = rows.length
+    ? `
+      <table>
+        <thead>
+          <tr><th>문건 ID</th><th>제목</th><th>서식</th><th>상태</th><th>다음 결재자</th><th>사유</th></tr>
+        </thead>
+        <tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
+      </table>
+    `
+    : `<div class="empty-state">아직 상신한 문건이 없습니다.</div>`;
+}
+
+function selectEmployeeDocumentTemplate(type) {
+  activeEmployeeDocumentType = type;
+  renderEmployeeSelfService();
+  const template = employeeDocumentTemplates.find((item) => item.type === type);
+  showToast(`${template?.title || "전자결재"} 양식을 자동 작성했습니다.`);
+}
+
+function getEmployeeDocumentField(field) {
+  return document.querySelector(`[data-employee-doc-field="${field}"]`)?.value.trim() || "";
+}
+
+function getSelectedApproverLabels() {
+  return Array.from(document.querySelectorAll("[data-employee-approver]:checked"))
+    .map((input) => {
+      const employee = getEmployeeById(input.dataset.employeeApprover);
+      return `${employee[3]} ${employee[1]}`;
+    });
+}
+
+function submitEmployeeDocument() {
+  const record = getCurrentEmployeeRecord();
+  const currentEmployee = getEmployeeById(currentEmployeeAccount.employeeId);
+  const template = employeeDocumentTemplates.find((item) => item.type === activeEmployeeDocumentType) || employeeDocumentTemplates[0];
+  const title = getEmployeeDocumentField("title");
+  const reason = getEmployeeDocumentField("reason");
+  const approvers = getSelectedApproverLabels();
+  const leaveDays = Math.max(1, Number(getEmployeeDocumentField("leaveDays")) || 1);
+  if (!title || !reason) {
+    showToast("제목과 내용/사유를 입력해야 상신할 수 있습니다.");
+    return;
+  }
+  if (!approvers.length) {
+    showToast("결재라인에서 결재자를 1명 이상 선택해야 합니다.");
+    return;
+  }
+  if (template.type === "vacation" && leaveDays > record.remainingLeave) {
+    showToast("신청 일수가 잔여연차를 초과합니다.");
+    return;
+  }
+  const requester = `${currentEmployee[3]} ${currentEmployee[1]}`;
+  const docId = `APR-${Date.now().toString().slice(-6)}`;
+  const startDate = getEmployeeDocumentField("startDate");
+  const requestDate = getEmployeeDocumentField("requestDate");
+  const detailReason =
+    template.type === "vacation"
+      ? `${reason} · 신청일 ${requestDate} · 휴가 ${startDate} / ${leaveDays}일 · 총연차 ${record.annualLeave}일 · 잔여 ${record.remainingLeave}일`
+      : `${reason} · 신청일 ${requestDate}`;
+  approvalDocuments.unshift({
+    id: docId,
+    title,
+    requester,
+    approver: approvers[0],
+    nextApprover: approvers[1] || approvers[0],
+    finalApprover: approvers[approvers.length - 1],
+    menu: template.title,
+    amount: 0,
+    status: "승인대기",
+    reason: detailReason
+  });
+  if (template.type === "vacation") {
+    const profile = employeeProfiles.find((item) => item.id === record.id);
+    if (profile) profile.leavePending += leaveDays;
+    const auditId = `AUD-LEAVE-${Date.now().toString().slice(-6)}`;
+    hrLeaveRequests.push({ id: `LR-${String(hrLeaveRequests.length + 1).padStart(3, "0")}`, employeeId: record.id, days: leaveDays, status: "승인대기", auditId });
+    auditRows.unshift([auditId, "휴가원 상신", requester, record.id, "승인대기", `${title} · ${leaveDays}일 · 결재라인 ${approvers.join(" > ")}`]);
+  }
+  const auditId = `AUD-DOC-${Date.now().toString().slice(-6)}`;
+  auditRows.unshift([auditId, "전자결재 상신", requester, title, "승인대기", `${template.title} · 결재라인 ${approvers.join(" > ")}`]);
+  auditRows.splice(20);
+  activeHrEmployeeId = record.id;
+  renderEmployeeSelfService();
+  renderEmployees(record.id);
+  renderApprovalManagement(docId);
+  renderAudit();
+  showToast(`${template.title} 문건을 결재라인에 상신했습니다.`);
 }
 
 function getAnnualSalesTarget() {
@@ -1669,6 +1950,7 @@ function processApprovalDocument(docId, nextStatus) {
   auditRows.unshift([auditId, "결재 처리", currentProfitCostUser.name, doc.title, nextStatus, `${doc.menu} · ${doc.reason}`]);
   auditRows.splice(20);
   renderApprovalManagement(doc.id);
+  renderEmployeeSelfService();
   renderAudit();
   showToast(`${doc.title} 문건을 ${nextStatus} 상태로 처리했습니다.`);
 }
@@ -2126,6 +2408,23 @@ document.addEventListener("click", (event) => {
   const approvalAction = event.target.closest("[data-approval-action]");
   if (approvalAction) processApprovalDocument(approvalAction.dataset.approvalId, approvalAction.dataset.approvalAction);
 
+  const documentTemplateButton = event.target.closest("[data-doc-template]");
+  if (documentTemplateButton) {
+    selectEmployeeDocumentTemplate(documentTemplateButton.dataset.docTemplate);
+    return;
+  }
+
+  if (event.target.closest("[data-submit-employee-document]")) {
+    submitEmployeeDocument();
+    return;
+  }
+
+  if (event.target.closest("[data-reset-employee-document]")) {
+    renderEmployeeSelfService();
+    showToast("전자결재 작성 양식을 초기화했습니다.");
+    return;
+  }
+
   const leaveRequestButton = event.target.closest("[data-leave-request]");
   if (leaveRequestButton) {
     requestAnnualLeave(leaveRequestButton.dataset.leaveRequest);
@@ -2303,6 +2602,7 @@ document.querySelector("#aiSend").addEventListener("click", () => {
 document.querySelector("#teamSend").addEventListener("click", sendTeamMessage);
 
 renderNav();
+renderEmployeeSelfService();
 renderDashboard();
 renderCustomers();
 renderProducts();
