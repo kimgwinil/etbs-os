@@ -2,7 +2,7 @@
 
 ## 1. 목적
 
-이 문서는 이제너두 전사 CRM OS Integration Hub에서 외부 시스템 어댑터가 준수해야 하는 공통 계약을 정의한다. 대상은 베네카페, 결제, 온누리, 외부 공급사 API, 정산/포인트 관련 시스템이다.
+이 문서는 이제너두 전사 CRM OS Integration Hub에서 외부 시스템 어댑터가 준수해야 하는 공통 계약을 정의한다. 대상은 베네카페, 결제, 온누리, 외부 공급사 API, 택배사 배송 조회, 세금계산서/거래명세표 발행, 정산/포인트 관련 시스템이다.
 
 본 문서는 상세 API 문서 수령 전 초안이며, 외부 API 필드, 인증 방식, 개인정보 처리범위, 아키텍처 확정은 PM 김권일 승인 후 확정한다.
 
@@ -30,9 +30,9 @@
 | `idempotencyKey` | string | 조건부 Y | 쓰기성 요청 필수, 조회 요청 선택 |
 | `tenantId` | string | Y | 고객사 또는 테넌트 식별자 |
 | `actorId` | string | Y | 요청 주체 사용자/시스템 ID |
-| `externalSystem` | enum | Y | `benefit_cafe`, `payment`, `onnuri`, `supplier`, `settlement_point` |
-| `operationType` | enum | Y | `read`, `create`, `update`, `cancel`, `refund`, `reconcile`, `webhook` |
-| `sourceEntityType` | enum | Y | `customer`, `employee`, `order`, `payment`, `point_transaction`, `settlement`, `supplier` |
+| `externalSystem` | enum | Y | `benefit_cafe`, `payment`, `onnuri`, `supplier`, `shipping_carrier`, `billing_document`, `settlement_point` |
+| `operationType` | enum | Y | `read`, `create`, `update`, `cancel`, `refund`, `reconcile`, `webhook`, `track`, `issue`, `reissue` |
+| `sourceEntityType` | enum | Y | `customer`, `employee`, `order`, `shipment`, `invoice`, `statement`, `payment`, `point_transaction`, `settlement`, `supplier` |
 | `sourceEntityId` | string | Y | 내부 기준 엔티티 ID |
 | `externalEntityId` | string | N | 외부 시스템 엔티티 ID |
 
@@ -129,6 +129,8 @@
 | `duplicate` | 조건부 | 상태 불일치 시 | 외부 중복 요청 |
 | `state_conflict` | 불가 | 즉시 | 내부/외부 상태 전이 충돌 |
 | `reconciliation_mismatch` | 불가 | 즉시 | 금액/수량/상태 대사 불일치 |
+| `tracking_unavailable` | 가능 | 반복 실패 시 | 택배사 조회 실패, 송장번호 미등록, 위치 정보 미수신 |
+| `document_issue_unknown` | 조건부 | 즉시 | 세금계산서/거래명세표 발행 결과 불명확 |
 
 인당 생산성/마진 기여: 오류 카테고리를 통일해 자동 복구 가능한 장애와 사람 판단이 필요한 장애를 즉시 구분한다.
 
@@ -271,6 +273,105 @@ KPI 영향: 정산 오류와 외감 자료 취합 시간 감소.
 
 인당 생산성/마진 기여: 포인트와 정산의 금액 검증을 자동화해 고비용 재무/운영 확인 시간을 줄인다.
 
+### 9.6 `shipmentTrackingAdapter`
+
+| 오퍼레이션 | 목적 | 입력 | 출력 | 인수조건 |
+|---|---|---|---|---|
+| `registerTrackingNumber` | 주문/출고에 송장번호 연결 | 주문 ID, 출고 ID, 택배사 코드, 송장번호 | 송장 등록 상태 | 송장번호 형식 오류는 수동 보정 큐로 이동 |
+| `trackShipment` | 배송상태와 현재 위치 조회 | 택배사 코드, 송장번호 | 배송상태, 현재 위치 요약, 이벤트 시간 | API 실패는 조회성 재시도 후 재조회 큐로 이동 |
+| `refreshShipmentStatus` | 지연/미완료 건 재조회 | 주문 ID, 송장번호, 마지막 조회 시간 | 최신 배송 이벤트 | 배송완료 전 장기 미갱신은 예외 큐 |
+| `correctShipmentStatus` | 수동 배송상태 보정 기록 | 배송 이벤트 ID, 보정 상태, 사유, 증적 | 보정 완료 이벤트 | 배송완료/반송 보정은 감사로그 필수 |
+
+의존성: 택배사 API 문서, 송장번호 체계, 택배사 계약/비용, 호출 한도, 배송상태 코드표.
+
+담당: A6, A2, A3, A7.
+
+KPI 영향: 배송 문의 대응 시간 감소, 지연/반송 예외 조기 발견, 수동 송장 추적 감소.
+
+PM 승인 필요: 택배사별 API 사용 계약, 실시간 위치 조회 비용, 호출 주기, 고객 안내/보상 정책.
+
+인당 생산성/마진 기여: 배송상태 조회와 재조회 큐를 표준화해 운영자의 수동 택배 추적 시간을 줄이고 배송 예외로 인한 마진 손실을 조기에 줄인다.
+
+#### 배송상태 표준 계약
+
+| 내부 상태 | 의미 | 예외 여부 | 큐 전환 |
+|---|---|---|---|
+| `shipment_pending` | 송장번호 또는 택배사 코드 등록 전 | 조건부 | 송장 미등록 SLA 초과 시 배송 예외 운영 큐 |
+| `tracking_registered` | 송장번호와 택배사 코드 등록 완료 | N | 다음 조회 예약 |
+| `pickup_ready` | 집하 예정 또는 접수 대기 | N | 장기 미집하 시 배송 예외 운영 큐 |
+| `picked_up` | 택배사 집하 완료 | N | 이동중 조회 예약 |
+| `in_transit` | 터미널/허브 이동 중 | N | 장기 미갱신 시 재시도 큐 |
+| `out_for_delivery` | 배송 출발 | N | 당일 미완료 시 배송 예외 운영 큐 |
+| `delivered` | 배송 완료 | N | 수동 보정 시 감사로그 필수 |
+| `delivery_delayed` | 배송 지연 | Y | 배송 예외 운영 큐 |
+| `misdelivered` | 오배송 의심 또는 확정 | Y | 배송 예외 운영 큐 |
+| `returned` | 반송 진행 또는 반송 완료 | Y | 배송 예외 운영 큐 |
+| `lost_or_damaged` | 분실/파손 의심 또는 확정 | Y | 배송 예외 운영 큐 |
+| `tracking_check_required` | 조회 실패 또는 상태 불명확 | Y | 재시도 큐 또는 수동 보정 큐 |
+
+인당 생산성/마진 기여: 택배사별 상태값을 내부 표준 상태로 정규화해 예외 자동 분류와 대시보드 집계 비용을 줄인다.
+
+#### 현재 위치 저장 계약
+
+```json
+{
+  "carrierCode": "cj_logistics",
+  "trackingNumber": "123456789012",
+  "deliveryStatus": "in_transit",
+  "carrierStatusCode": "HUB_ARRIVED",
+  "locationSummary": "대전허브",
+  "carrierEventAt": "2026-06-07T03:00:00Z",
+  "lastFetchedAt": "2026-06-07T03:05:00Z",
+  "rawResponseStored": false
+}
+```
+
+| 필드 | 저장 기준 | PM 승인 필요 |
+|---|---|---|
+| `carrierCode` | 내부 표준 택배사 코드 | N |
+| `trackingNumber` | 저장하되 화면/로그 일부 마스킹 | 마스킹 정책 |
+| `deliveryStatus` | 내부 표준 배송상태 | N |
+| `carrierStatusCode` | 택배사 원본 상태 코드 | 보존기간 |
+| `locationSummary` | 터미널/허브/지역명 수준 위치 요약 | N |
+| `carrierEventAt` | 택배사 이벤트 시각 | N |
+| `lastFetchedAt` | CRM OS 최종 조회 시각 | N |
+| `rawResponseStored` | 기본 `false` | 원문 저장 PM 승인 필요 |
+
+정밀 주소, GPS 좌표, 수취인 이름, 수취인 전화번호, 상세 배송지는 배송조회 이벤트 저장 범위에서 제외한다. 필요한 경우 승인된 주문 원천 데이터에서 권한 기반으로 조회한다.
+
+인당 생산성/마진 기여: 위치 저장 범위를 위치 요약으로 제한해 개인정보 노출 리스크와 저장/감사 비용을 줄인다.
+
+#### 배송 큐 전환 계약
+
+| 큐 | 진입 조건 | 종료 조건 | 필수 이벤트 |
+|---|---|---|---|
+| `delivery_retry_queue` | 타임아웃, 5xx, 네트워크 오류, 장기 미갱신 | 조회 성공 또는 재시도 초과 | 재시도 횟수, 다음 재조회 시각 |
+| `delivery_manual_correction_queue` | 송장번호 오류, 택배사 코드 불일치, 상태 미매핑, 반복 실패 | 보정 완료 또는 폐기 승인 | 보정 사유, 증빙, 담당자, 변경 전후 상태 |
+| `delivery_exception_ops_queue` | 미출고, 장기 미집하, 지연, 오배송, 반송, 분실/파손 | 담당자 조치 완료 | 예외 유형, SLA 초과 여부, 고객/공급사 후속 처리 |
+
+PM 승인 필요: 큐별 SLA, 재조회 주기, 택배사 호출 한도/비용, 고객 안내/보상 정책.
+
+인당 생산성/마진 기여: 배송 큐 전환을 계약화해 자동 재시도와 수동 운영 대응의 경계를 명확히 하고 처리 지연 비용을 낮춘다.
+
+### 9.7 `billingDocumentAdapter`
+
+| 오퍼레이션 | 목적 | 입력 | 출력 | 인수조건 |
+|---|---|---|---|---|
+| `issueTaxInvoice` | 세금계산서 외부 발행 | 주문 ID, 거래처, 공급가, 세액, 발행일 | 외부 발행번호, 발행상태 | 발행 결과 불명확 시 중복 발행 금지, 상태 조회 우선 |
+| `issueTransactionStatement` | 거래명세표 발행/전송 | 주문 ID, 품목, 수량, 금액, 수신처 | 문서번호, 첨부/전송 상태 | 전송 실패는 재전송 큐로 이동 |
+| `getDocumentIssueStatus` | 발행 상태 재조회 | 외부 발행번호 또는 내부 발행 요청 ID | 발행/전송/실패 상태 | 외부 상태와 내부 상태 불일치 시 예외 큐 |
+| `cancelOrAmendDocument` | 수정/취소 발행 가능성 처리 | 원문서 ID, 수정 사유, 변경 금액 | 수정/취소 발행 상태 | 권한자 승인 전 실행 금지 |
+
+의존성: 전자세금계산서 API 또는 ERP 연동 문서, 거래명세표 발행 방식, 회계/세무 기준, 개인정보/거래처 정보 처리범위.
+
+담당: A6, A2, A7, A4.
+
+KPI 영향: 발행 누락, 중복 발행, 재발행 수작업, 외감 증적 취합 시간 감소.
+
+PM 승인 필요: 외부 발행 벤더/API/계약/비용, 수정/취소 발행 권한, 원문/첨부 보관기간, 발행 실패 시 업무 진행 기준.
+
+인당 생산성/마진 기여: 발행 상태와 실패 처리를 어댑터로 관리해 회계 문서 누락과 재발행 확인 시간을 줄인다.
+
 ## 10. 예외 큐 이벤트 계약
 
 ```json
@@ -288,6 +389,10 @@ KPI 영향: 정산 오류와 외감 자료 취합 시간 감소.
     "currency": "KRW",
     "amount": 50000
   },
+  "operationalImpact": {
+    "shipmentDelayed": false,
+    "documentIssueBlocked": false
+  },
   "recommendedAction": "Check external payment status before retrying write request.",
   "assignedTeam": "operations",
   "createdAt": "2026-06-07T03:05:00Z",
@@ -298,6 +403,7 @@ KPI 영향: 정산 오류와 외감 자료 취합 시간 감소.
 ### 필수 인수조건
 
 - 금액 영향이 있는 예외는 `amountImpact`를 가져야 한다.
+- 배송 지연, 송장번호 오류, 발행 차단처럼 운영 영향이 있는 예외는 `operationalImpact`를 가져야 한다.
 - 예외 상태 변경은 감사로그에 남아야 한다.
 - `manual_correction_required`는 증적 첨부 또는 외부 보정 참조번호를 가져야 한다.
 - `discarded`는 승인자와 사유가 없으면 허용하지 않는다.
@@ -309,6 +415,8 @@ KPI 영향: 정산 오류와 외감 자료 취합 시간 감소.
 | 항목 | 기준 초안 | PM 승인 필요 |
 |---|---|---|
 | 로그 마스킹 | 이름, 전화번호, 이메일, 계좌/카드 유사 정보 마스킹 | 개인정보 항목 확정 |
+| 배송정보 마스킹 | 수취인, 연락처, 배송지 주소, 송장번호 일부 마스킹 | 배송 개인정보 처리범위 |
+| 발행정보 보호 | 사업자번호, 이메일, 세무 문서 원문 접근 제한 | 세무/거래처 정보 처리범위 |
 | 원문 저장 | 기본 비저장 또는 마스킹 저장 | 원문 보관 필요 여부 |
 | 접근 권한 | 예외 조회, 재처리, 수동 보정, 폐기 권한 분리 | RBAC 정책 |
 | 웹훅 검증 | 서명, 타임스탬프, 재전송 방지 검증 | 벤더별 방식 |
@@ -328,6 +436,12 @@ KPI 영향: 정산 오류와 외감 자료 취합 시간 감소.
 | `integration_idempotency_conflict_total` | `externalSystem`, `operationType` | 멱등 충돌 수 |
 | `integration_reconciliation_mismatch_total` | `externalSystem`, `sourceEntityType` | 대사 불일치 수 |
 | `integration_amount_mismatch_krw` | `externalSystem` | 대사 차이 금액 |
+| `integration_tracking_refresh_lag_minutes` | `carrier`, `deliveryStatus` | 배송상태 최신성 |
+| `integration_shipping_exception_total` | `carrier`, `exceptionType` | 배송 지연/오배송/반송/미출고 예외 수 |
+| `integration_delivery_retry_queue_size` | `carrier`, `deliveryStatus` | 배송 재시도 큐 적체 |
+| `integration_delivery_manual_correction_total` | `carrier`, `correctionType` | 배송 수동 보정 건수 |
+| `integration_document_issue_failure_total` | `documentType`, `failureCategory` | 세금계산서/거래명세표 발행 실패 수 |
+| `integration_document_duplicate_risk_total` | `documentType` | 중복 발행 위험 수 |
 
 인당 생산성/마진 기여: 공통 메트릭으로 외부 연동 품질을 수치화해 장애 대응 인력 투입과 저마진 연동을 식별한다.
 
@@ -339,6 +453,8 @@ KPI 영향: 정산 오류와 외감 자료 취합 시간 감소.
 | 결제 | PG 웹훅과 일별 대사 데이터 제공 | 결제수단, 웹훅 서명, 취소 정책 |
 | 온누리 | 승인/취소/대사성 API 또는 파일 제공 | 실제 업무 범위와 API 제공자 |
 | 공급사 | 공급사별 API/SFTP/파일 혼재 | 공급사 등급과 표준 연동 우선순위 |
+| 택배사 | 공식 API로 송장번호 기반 배송상태와 터미널/허브/지역명 수준 현재 위치 조회 가능 | 택배사별 API/계약/비용/호출 한도/상태 코드표, 위치 저장 범위 |
+| 세금계산서/거래명세표 | 외부 전자세금계산서 API, ERP, 문서 발행 API 중 하나로 연동 가능 | 벤더 선정, 계약/비용, 수정/취소 발행, 보관기간 |
 | 정산/포인트 | 내부 원장과 외부 대사 데이터를 비교 가능 | 원장 모델, 전표/외감 기준 |
 
 인당 생산성/마진 기여: 가정을 공개적으로 관리해 불명확한 API에 대한 과잉 설계를 줄이고 확인된 연동부터 빠르게 표준화한다.

@@ -612,7 +612,149 @@ CRM OS 전체의 인증, 권한, 테넌트 격리, 개인정보 접근로그, �
 
 인당 생산성/마진 기여: 운영 확대 시 장애, 지연, 감사 대응에 필요한 추가 인력을 억제한다.
 
-## 11. 아키텍처 결정 초안
+## 11. 유통회사 표준 프로세스 반영
+
+### 11.1 반영 목적
+
+`/docs/PROCESS_REQUIREMENTS.md`의 표준 흐름인 영업활동, 파이프라인, 견적, 계약, 주문, 출고, 배송/입출고, 세금계산서/거래명세표, 매출인식, 영업이익 확인을 P0 아키텍처 경계에 반영한다.
+
+이 흐름은 별도 신규 확정 모듈로 두지 않고, STEP1에서는 기존 P0 모듈과 `Integration Boundary`의 책임으로 나눈다. 단, `Product/Order/Fulfillment/Billing` 도메인의 독립 모듈화 여부는 PM 승인 후 STEP2에서 결정한다.
+
+인당 생산성/마진 기여: 영업부터 매출인식까지 단일 상태 흐름으로 연결해 부서 간 재입력, 누락, 수기 검산, 낮은 이익 원인 추적 시간을 줄인다.
+
+### 11.2 End-to-End 상태머신 초안
+
+```text
+sales_activity_logged
+  -> pipeline_created
+  -> quote_drafted
+  -> quote_approval_requested
+  -> quote_approved
+  -> contract_drafted
+  -> contract_approved
+  -> contract_active
+  -> order_registered
+  -> release_requested
+  -> released
+  -> shipment_requested
+  -> in_transit
+  -> delivered
+  -> statement_issued
+  -> tax_invoice_issued
+  -> revenue_recognition_requested
+  -> revenue_recognized
+  -> operating_profit_reviewed
+```
+
+예외 상태는 모든 단계에서 `approval_rejected`, `external_failed`, `manual_review_required`, `canceled`, `reversed`를 사용할 수 있다.
+
+상태 변경은 `actor_id`, `approval_document_id`, `transition_reason`, `evidence_ref`, `request_id`, `idempotency_key`를 포함한다.
+
+인당 생산성/마진 기여: 업무 흐름을 상태 기반으로 표준화해 다음 처리 대상, 병목 단계, 이익 훼손 지점을 즉시 식별한다.
+
+### 11.3 단계별 상태와 모듈 경계
+
+| 단계 | 핵심 상태 | 소유 모듈 | 주요 입력 | 주요 출력 | PM 승인 필요 |
+|---|---|---|---|---|---|
+| 영업활동 | `sales_activity_logged` | CRM Core | 고객, 담당자, 활동내용, 다음 액션 | 활동 타임로그, 파이프라인 후보 | 활동 유형 표준 |
+| 영업파이프라인 | `pipeline_created`, `pipeline_updated`, `pipeline_lost`, `pipeline_won` | CRM Core | 고객, 상품, 수량, 예상금액, 확률 | 파이프라인 상태, 견적 후보 | 단계명, 확률 기준 |
+| 견적 | `quote_drafted`, `quote_approval_requested`, `quote_approved`, `quote_rejected`, `quote_expired` | Operations Console | 상품, 판매가격, 할인, 수량, 유효기간 | 견적서, 승인 문건 | 할인 승인 기준 |
+| 계약 | `contract_drafted`, `contract_approved`, `contract_active`, `contract_expired`, `contract_terminated` | CRM Core | 고객, 계약기간, 계약금액, 담당자 | 계약 레코드, 주문 후보 | 계약 승인 기준 |
+| 주문 | `order_registered`, `order_confirmed`, `order_canceled` | Operations Console | 계약, 고객, 상품, 수량, 납기, 배송지 | 주문 레코드, 출고 요청 | 주문 취소/변경 권한 |
+| 출고 | `release_requested`, `release_approved`, `released`, `release_failed` | Operations Console | 주문, 창고/출고처, 수량 | 출고 상태, 배송 요청 | 재고/창고 원천 시스템 |
+| 배송/입출고 | `shipment_requested`, `in_transit`, `delivered`, `returned`, `lost`, `manual_tracking_required` | Integration Boundary | 송장번호, 택배사, 출고정보 | 배송 상태, 위치, 예외 알림 | 택배사 API/비용/계약 |
+| 세금계산서/거래명세표 | `statement_issued`, `tax_invoice_requested`, `tax_invoice_issued`, `tax_invoice_failed` | Operations Console, Integration Boundary | 주문, 공급가, 세액, 거래처 | 발행 문서, 발행 로그 | 전자세금계산서 연동 범위 |
+| 매출인식 | `revenue_recognition_requested`, `revenue_recognized`, `revenue_adjusted`, `revenue_reversed` | Profitability Dashboard | 주문, 출고, 청구, 회계 기준 | 매출 레코드, 수익성 지표 | 매출인식 기준 |
+| 영업이익 확인 | `operating_profit_calculated`, `operating_profit_reviewed` | Profitability Dashboard | 매출, 원가율, 판관비율, 일반관리비율 | 이익률, 원인 지표 | MVP 산식 및 공개 범위 |
+
+인당 생산성/마진 기여: 단계별 소유 모듈을 명확히 해 업무 중복 처리와 책임 공백을 줄인다.
+
+### 11.4 모듈별 아키텍처 영향
+
+| 모듈 | 추가 책임 | 추가 계약 초안 | 인수조건 | KPI 영향 |
+|---|---|---|---|---|
+| CRM Core | 영업활동, 파이프라인, 계약 기준 데이터 소유 | `/crm/sales-activities`, `/crm/pipelines`, `/crm/contracts`; `crm.pipeline.*`, `crm.contract.*` | 파이프라인과 계약은 고객사/담당자/활동 이력과 연결되어야 한다. | 영업 이력 탐색 시간 감소, 계약 전환율 추적 |
+| Operations Console | 견적, 주문, 출고, 발행 업무 큐와 결재 대상 관리 | `/ops/quotes`, `/ops/orders`, `/ops/releases`, `/ops/billing-documents`; `ops.quote.*`, `ops.order.*`, `ops.release.*`, `ops.billing_document.*` | 견적/주문/출고/발행은 상태 전이와 결재 이력을 남겨야 한다. | 승인 대기와 누락 감소, 처리 리드타임 감소 |
+| Security & Audit Baseline | 결재 문건, 결재 라인, 권한별 메뉴, 타임로그/감사로그 통제 | `/security/approval-documents`, `/security/approval-lines`, `/security/timelogs`; `security.approval.*`, `security.timelog.recorded` | 결재 작성자는 로그인 사용자로 자동 지정되고 변경 이력이 남아야 한다. | 책임소재 확인 시간 감소, 내부통제 대응 비용 감소 |
+| Profitability Dashboard | 매출인식, 영업이익 산식, 원인 지표 집계 | `/profitability/revenue-recognitions`, `/profitability/operating-profit`; `profitability.revenue_recognized`, `profitability.operating_profit_calculated` | 산식과 원천 데이터 품질 이슈를 표시하고 PM 승인 전 확정 지표로 표시하지 않는다. | 저마진 원인 식별, 가격/할인/배송비 정책 개선 |
+| Integration Boundary | 택배사, 전자세금계산서, 거래명세표, 재고/입출고 원천 연동 | `carrier_tracking`, `e_tax_invoice`, `inventory_warehouse`; `integration.delivery.*`, `integration.tax_invoice.*`, `integration.inventory.*` | 연동 실패는 운영 예외 큐로 전환하고 수동 보정 경로를 제공해야 한다. | 배송 문의와 발행 실패 대응 시간 감소 |
+
+인당 생산성/마진 기여: 신규 프로세스를 기존 P0 모듈 책임으로 흡수해 새 조직 경계로 인한 지연 없이 업무 흐름을 표준화한다.
+
+### 11.5 결재 아키텍처 영향
+
+- 결재 문건 작성자는 현재 로그인한 `user_id`로 자동 지정한다.
+- 결재 문건은 `approval_document_id`, `document_type`, `target_resource_type`, `target_resource_id`, `submitter_id`, `status`를 가진다.
+- 결재 라인은 `approval_line_id`, `approval_document_id`, `approver_id`, `sequence`, `status`, `decided_at`을 가진다.
+- 결재 대상 후보는 견적, 계약, 세금계산서/거래명세표 발행, 매출인식 조정, 영업이익 산식 변경이다.
+- 결재 상태는 `draft`, `submitted`, `in_review`, `approved`, `rejected`, `canceled`, `returned`를 사용한다.
+- 결재 라인 임의 지정과 순서 변경은 허용하되, 결재권자 범위와 대리결재 정책은 `PM 승인 필요`로 둔다.
+- 결재 상태 변경은 타임로그와 감사로그를 모두 남긴다.
+
+인당 생산성/마진 기여: 결재 흐름을 시스템 이벤트로 만들면 승인 대기, 누락, 책임소재 확인 시간을 줄인다.
+
+### 11.6 로그 아키텍처 영향
+
+- `timelog`는 업무 맥락 중심 이력이며 사용자가 화면에서 확인하는 작업 이력으로 둔다.
+- `audit_log`는 보안, 내부통제, 외감 증적 중심의 변경 불가 로그로 둔다.
+- 동일 행위가 업무 이력과 통제 증적을 모두 요구하면 `timelog`와 `audit_log`를 함께 기록한다.
+- 추가 로그 대상은 고객정보, 임직원정보, 매출정보, 상품정보, 견적, 계약, 주문, 출고, 배송, 세금계산서, 거래명세표, 매출인식, 결재 문건, 결재 라인, 영업이익 산식 변경이다.
+- 설정 메뉴의 로그기록 확인은 `security_auditor`, `supervisor`, `platform_admin` 후보 권한에 제공하되 개인정보 처리범위는 `PM 승인 필요`로 둔다.
+
+인당 생산성/마진 기여: 업무 타임로그와 감사로그를 분리해 현장 추적성과 외감 대응을 모두 만족하면서 로그 조회 혼선을 줄인다.
+
+### 11.7 연동 아키텍처 영향
+
+| 연동 | 내부 식별자 | 목적 | 실패 처리 | PM 승인 필요 |
+|---|---|---|---|---|
+| 택배사 위치 조회 | `carrier_tracking` | 배송 현재 위치와 상태 확인 | 수동 송장 입력, 상태 보정, 재조회 큐 | API, 비용, 계약 조건, 송장번호 체계 |
+| 재고/입출고 원천 | `inventory_warehouse` | 출고 가능 수량, 창고, 입출고 상태 확인 | 출고 실패 예외 큐, 수동 출고 상태 보정 | 원천 시스템과 책임 범위 |
+| 전자세금계산서 | `e_tax_invoice` | 세금계산서 발행과 발행 상태 수신 | 발행 실패 예외 큐, 재발행, 수동 첨부 | 외부 서비스, 위탁 범위, 원본 보관 |
+| 거래명세표 | `transaction_statement` | 거래명세표 발행, 첨부, 전송 | 재전송, 수동 첨부, 발행 취소 | 양식, 법적 보관 범위 |
+| 회계/매출 원천 | `revenue_accounting` | 매출인식과 회계 근거 반영 | 데이터 품질 이슈, 수동 보정 큐 | 매출인식 기준, 외감 증적 범위 |
+
+인당 생산성/마진 기여: 배송, 발행, 매출인식 실패를 표준 예외 큐로 올려 반복 문의와 수동 추적 시간을 줄인다.
+
+### 11.8 영업이익 산식 반영
+
+`/docs/PROCESS_REQUIREMENTS.md`의 MVP 산식은 다음 초안 지표로 매핑한다. 단, 산식 확정과 슈퍼바이저 공개 범위는 `PM 승인 필요`로 둔다.
+
+| 지표 | 식별자 | 초안 산식 | 승인 상태 |
+|---|---|---|---|
+| 매출금액 | `salesAmount` | 주문 또는 매출인식 기준 금액 | PM 승인 필요 |
+| 원가 | `costAmount` | `salesAmount * 0.5` | PM 승인 필요 |
+| 판매관리비 및 일반관리비 | `sgnaAmount` | `salesAmount * 0.5` | PM 승인 필요 |
+| 영업이익 | `operatingProfit` | `salesAmount - costAmount - sgnaAmount` | PM 승인 필요 |
+| 영업이익률 | `operatingProfitRate` | `operatingProfit / salesAmount` | PM 승인 필요 |
+
+원가 50%와 판매관리비 및 일반관리비 50%를 동시에 적용하면 기본 영업이익은 0이므로, 대시보드는 할인, 반품, 배송비, 처리시간, 결재 지연, 정산 지연, 예외 처리 건수를 이익 저하 원인 후보로 함께 표시한다.
+
+인당 생산성/마진 기여: 단순 MVP 산식으로 빠르게 지표를 시작하되 이익 저하 원인을 분해해 가격, 할인, 업무 배정 조정에 바로 연결한다.
+
+### 11.9 권한과 메뉴 영향
+
+| 권한 후보 | 표시 메뉴 | 제한 | PM 승인 필요 |
+|---|---|---|---|
+| `general_user` | 내 영업활동, 내 파이프라인, 견적, 주문, 내 결재함 | 전사 영업이익 산식과 전사 로그 접근 제한 | 역할명과 조직 매핑 |
+| `admin_user` | 고객, 상품, 주문, 출고, 세금계산서, 거래명세표, 팀 업무 | 권한/산식 변경 제한 | 메뉴 범위 |
+| `supervisor` | 전사 대시보드, 영업이익, 로그, 설정, 권한 관리 | 개인정보는 승인된 항목만 접근 | 임직원정보/로그 공개 범위 |
+
+인당 생산성/마진 기여: 역할별 메뉴를 제한해 반복 업무 집중도를 높이고 민감 정보 노출에 따른 리스크 비용을 줄인다.
+
+### 11.10 추가 PM 승인 필요 항목
+
+1. 유통회사 표준 프로세스를 P0 확장 범위로 둘지, STEP2 별도 도메인 모듈로 분리할지 여부
+2. 영업이익 MVP 산식: 원가 50%, 판매관리비 및 일반관리비 50% 고정 반영 여부
+3. 택배사 실시간 위치 연동의 API, 계약, 비용, 송장번호 체계
+4. 전자세금계산서와 거래명세표 발행 연동 범위, 법적 보관 범위, 외부 위탁 범위
+5. 결재 라인 임의 지정 범위, 대리결재, 전결, 반려 후 재상신 정책
+6. 매출인식 기준: 출고, 배송완료, 검수, 청구, 입금 중 어떤 시점을 기준으로 할지
+7. 슈퍼바이저가 조회 가능한 영업이익, 로그, 임직원정보 범위
+8. 상품, 재고, 창고, 배송지 개인정보의 원천 시스템과 처리범위
+
+인당 생산성/마진 기여: 비용, 회계, 개인정보 리스크가 큰 결정을 승인 게이트로 분리해 잘못된 구현과 재작업을 막는다.
+
+## 12. 아키텍처 결정 초안
 
 | 결정 ID | 결정 | 상태 | PM 승인 | 인당 생산성/마진 기여 |
 |---|---|---|---|---|
@@ -623,8 +765,13 @@ CRM OS 전체의 인증, 권한, 테넌트 격리, 개인정보 접근로그, �
 | `ADR-A1-005` | 개인정보 원문 접근은 사유 코드와 감사로그를 필수로 한다. | 초안 | 필요 | 사고 조사와 ISMS 대응 비용을 줄인다. |
 | `ADR-A1-006` | 업무 상태 변경은 표준 상태 모델과 이벤트로 기록한다. | 초안 | 필요 | 업무 누락과 담당자별 임의 처리를 줄인다. |
 | `ADR-A1-007` | 원가, 마진, 인력 단가 산식은 PM 승인 전 확정하지 않는다. | 초안 | 필요 | 잘못된 수익성 지표 기반 의사결정과 재작업을 막는다. |
+| `ADR-A1-008` | 유통회사 표준 프로세스는 STEP1에서 기존 P0 모듈 책임으로 매핑하고 신규 모듈 확정은 보류한다. | 초안 | 필요 | 새 모듈 확정 전에도 영업-매출 흐름을 표준화해 병렬 작업 지연을 줄인다. |
+| `ADR-A1-009` | 견적, 계약, 발행, 매출인식 조정은 결재 문건과 결재 라인 이벤트를 통해 추적한다. | 초안 | 필요 | 승인 누락과 책임소재 확인 시간을 줄인다. |
+| `ADR-A1-010` | 배송/입출고, 세금계산서, 거래명세표 연동 실패는 Operations Console 예외 큐로 전환한다. | 초안 | 필요 | 수동 추적과 재처리 시간을 줄여 운영 처리량을 높인다. |
+| `ADR-A1-011` | 타임로그는 업무 이력, 감사로그는 통제 증적으로 분리한다. | 초안 | 필요 | 현장 조회성과 외감 대응을 동시에 만족해 로그 관리 비용을 줄인다. |
+| `ADR-A1-012` | 영업이익 MVP 산식은 요구사항 입력으로 반영하되 PM 승인 전 확정 지표로 표시하지 않는다. | 초안 | 필요 | 잘못된 손익 판단으로 가격/인력 정책을 오조정하는 비용을 막는다. |
 
-## 12. 가정
+## 13. 가정
 
 - 가정: 베네카페, 결제, 온누리의 상세 API 문서와 호출 제한은 아직 제공되지 않았다.
 - 가정: 기존 레거시 관리자 또는 정산 시스템이 CRM Core의 초기 데이터 원천이 될 수 있다.
@@ -632,10 +779,12 @@ CRM OS 전체의 인증, 권한, 테넌트 격리, 개인정보 접근로그, �
 - 가정: 임직원 260만 명 이상 데이터는 실시간 전체 스캔이 아니라 테넌트, 상태, 기간, 검색 인덱스 기준 조회가 필요하다.
 - 가정: Profitability Dashboard의 매출/원가/마진 지표는 회계 및 PM 검토 후 확정한다.
 - 가정: 외부 공급사 또는 고객사 포털은 P2 이후 확장 대상으로 둔다.
+- 가정: 상품, 재고, 창고, 배송, 전자세금계산서, 거래명세표 원천 시스템은 아직 확정되지 않았다.
+- 가정: 유통회사 표준 프로세스는 STEP1에서 아키텍처 경계와 상태머신만 반영하고 직접 구현하지 않는다.
 
 인당 생산성/마진 기여: 불확실한 전제를 가정으로 분리해 승인 전 과투자와 잘못된 구현을 막는다.
 
-## 13. PM 승인 필요 항목
+## 14. PM 승인 필요 항목
 
 1. P0 모듈 범위 확정: `CRM Core`, `Operations Console`, `Security & Audit Baseline`, `Profitability Dashboard`
 2. 멀티테넌트 물리 분리 수준: 단일 DB 논리 분리, 스키마 분리, 고객사별 전용 저장소 여부
@@ -647,25 +796,32 @@ CRM OS 전체의 인증, 권한, 테넌트 격리, 개인정보 접근로그, �
 8. 인력 단가 또는 업무 처리 원가 산정 기준
 9. 감사로그 보존기간과 외감 증적 제공 범위
 10. 기술스택, DBMS, 검색엔진, 메시지 브로커, BI 도구 최종 선정
+11. 유통회사 표준 프로세스를 P0 확장 범위로 둘지 또는 STEP2 별도 도메인으로 분리할지 여부
+12. 영업이익 MVP 산식: 원가 50%, 판매관리비 및 일반관리비 50% 고정 기준 반영 여부
+13. 택배사 실시간 위치 연동 API, 계약, 비용, 송장번호 체계
+14. 전자세금계산서/거래명세표 발행 연동 범위, 법적 보관 범위, 외부 위탁 범위
+15. 결재 라인 임의 지정, 대리결재, 전결, 반려 후 재상신 정책
+16. 매출인식 기준과 매출 조정 권한
+17. 슈퍼바이저 전용 대시보드의 영업이익, 로그, 임직원정보 공개 범위
 
 인당 생산성/마진 기여: 승인 게이트를 명확히 해 비용, 보안, 회계 리스크가 큰 결정을 무단 확정하지 않는다.
 
-## 14. 타 에이전트 작업 기준
+## 15. 타 에이전트 작업 기준
 
 | 에이전트 | 독립 작업 입력 | 산출물 기대 |
 |---|---|---|
-| A2 | P0 API, 업무 상태 모델, 권한 전제 | 서비스 설계, API 상세, 운영 처리 플로우 |
-| A3 | Operations Console, Profitability Dashboard 경계 | 화면 IA, 사용자 플로우, 대시보드 와이어 |
-| A4 | CRM Core 엔티티, 지표 초안, 데이터 소유권 | 데이터 모델, 지표 산식 검증, 원천 매핑 |
-| A5 | 업무 큐, 예외 케이스, 자동심사 후보 | 자동화 후보, 사람 검토 기준 |
-| A6 | Integration Boundary, 어댑터 원칙 | 베네카페/결제/온누리 연동 질문지와 어댑터 스펙 |
-| A7 | Security & Audit Baseline, 개인정보 승인 항목 | 개인정보 흐름도, ISMS/외감 통제 요구 |
-| A8 | Operations Console 처리량 KPI | 운영 프로세스, SLA, 일괄 처리 기준 |
-| A9 | 비기능 요구사항, 보안/관측성 기준 | 인프라, 로그, 모니터링, 배포 기준 |
+| A2 | P0 API, 업무 상태 모델, 유통 표준 프로세스 상태 | 서비스 설계, API 상세, 영업-주문-발행 처리 플로우 |
+| A3 | Operations Console, Profitability Dashboard 경계, 권한별 메뉴 | 화면 IA, 사용자 플로우, 결재 라인 UI, 대시보드 와이어 |
+| A4 | CRM Core 엔티티, 지표 초안, 매출인식/영업이익 데이터 | 데이터 모델, 지표 산식 검증, 원천 매핑 |
+| A5 | 업무 큐, 예외 케이스, 결재/배송/이익 저하 자동화 후보 | 자동화 후보, 사람 검토 기준 |
+| A6 | Integration Boundary, 택배사/세금계산서/거래명세표 어댑터 원칙 | 연동 질문지와 어댑터 스펙 |
+| A7 | Security & Audit Baseline, 결재/로그/개인정보 승인 항목 | 개인정보 흐름도, ISMS/외감 통제 요구 |
+| A8 | E2E 상태머신, Operations Console 처리량 KPI | 운영 프로세스, SLA, 일괄 처리, 권한별 검증 기준 |
+| A9 | 비기능 요구사항, 보안/관측성/로그 보존 기준 | 인프라, 로그, 모니터링, 배포 기준 |
 
 인당 생산성/마진 기여: 에이전트별 입력과 산출물을 나눠 병렬 작업 중 충돌과 대기 시간을 줄인다.
 
-## 15. 완료조건 점검
+## 16. 완료조건 점검
 
 | 항목 | 반영 여부 |
 |---|---|
@@ -681,5 +837,7 @@ CRM OS 전체의 인증, 권한, 테넌트 격리, 개인정보 접근로그, �
 | 모듈 경계 | 반영 |
 | 통신규약 | 반영 |
 | 베네카페/결제/온누리 연동 경계 | 반영 |
+| 유통회사 표준 프로세스 상태머신 | 반영 |
+| 결재/로그/배송/발행/매출인식 영향 | 반영 |
 
 인당 생산성/마진 기여: DoD를 문서 내에서 점검해 후속 검토와 재작성 비용을 줄인다.

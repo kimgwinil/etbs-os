@@ -1217,6 +1217,43 @@ input {
 }
 
 @media (max-width: 760px) {
+  .sidebar {
+    position: static;
+    display: grid;
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    padding: 12px;
+  }
+
+  .brand {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+  }
+
+  .brand span {
+    max-width: none;
+  }
+
+  .nav-list {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-height: 0;
+    width: 100%;
+  }
+
+  .nav-item {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    height: auto;
+    justify-content: flex-start;
+    overflow: visible;
+    white-space: normal;
+  }
+
   .main {
     padding: 14px;
   }
@@ -1237,12 +1274,6 @@ input {
   .kanban,
   .pipeline {
     grid-template-columns: 1fr;
-  }
-
-  .nav-item {
-    min-width: 46px;
-    overflow: hidden;
-    white-space: nowrap;
   }
 
   .chat-launcher {
@@ -1270,5 +1301,23 @@ input {
 
   .assistant-side {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .realtime-row {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .realtime-row strong {
+    grid-column: 2;
   }
 }
