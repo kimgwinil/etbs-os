@@ -101,24 +101,42 @@ const customers = Array.from({ length: 100 }, (_, index) => makeCustomer(index))
 const products = Array.from({ length: 100 }, (_, index) => makeProduct(index));
 const employees = Array.from({ length: 50 }, (_, index) => makeEmployee(index));
 
-const rawFinancialRecords = [
-  { id: "FIN-001", type: "revenue", label: "매출액", amount: 7095000000 },
-  { id: "FIN-002", type: "purchase", label: "매입액", amount: 3850000000 },
-  { id: "FIN-003", type: "product_cost", label: "제품원가", amount: 920000000 },
-  { id: "FIN-004", type: "selling_admin", label: "판매관리비", amount: 640000000 },
-  { id: "FIN-005", type: "general_admin", label: "일반관리비", amount: 380000000 }
-];
+const currentProfitCostUser = { name: "김권일", role: "Master" };
+const profitCostSettings = {
+  productCostRate: 0.08,
+  sellingAdminRate: 0.09,
+  generalAdminRate: 0.05,
+  formulaVersion: "profit-v2026.06",
+  authorizedRoles: ["Master", "ProfitCostInputManager"]
+};
+const productFinanceRecords = products.slice(0, 24).map((product, index) => {
+  const salesUnitPrice = 32000 + ((index * 7300) % 128000);
+  const purchaseUnitPrice = Math.round(salesUnitPrice * (0.54 + ((index % 5) * 0.035)));
+  const soldQuantity = 80 + ((index * 17) % 220);
+  return {
+    id: `PFIN-${String(index + 1).padStart(3, "0")}`,
+    productName: product[0],
+    supplier: product[1],
+    customerName: product[2],
+    salesUnitPrice,
+    purchaseUnitPrice,
+    soldQuantity
+  };
+});
 
 function classifyFinancialRecords() {
-  const classified = rawFinancialRecords.reduce(
-    (acc, record) => {
-      acc[record.type] = (acc[record.type] || 0) + record.amount;
-      return acc;
-    },
-    { revenue: 0, purchase: 0, product_cost: 0, selling_admin: 0, general_admin: 0 }
-  );
+  const revenue = productFinanceRecords.reduce((sum, record) => sum + record.salesUnitPrice * record.soldQuantity, 0);
+  const purchase = productFinanceRecords.reduce((sum, record) => sum + record.purchaseUnitPrice * record.soldQuantity, 0);
+  const classified = {
+    revenue,
+    purchase,
+    product_cost: Math.round(revenue * profitCostSettings.productCostRate),
+    selling_admin: Math.round(revenue * profitCostSettings.sellingAdminRate),
+    general_admin: Math.round(revenue * profitCostSettings.generalAdminRate)
+  };
   classified.totalCost = classified.purchase + classified.product_cost + classified.selling_admin + classified.general_admin;
   classified.operatingProfit = classified.revenue - classified.totalCost;
+  classified.marginRate = classified.revenue ? classified.operatingProfit / classified.revenue : 0;
   return classified;
 }
 
@@ -243,19 +261,19 @@ const approvalLines = [
 const settingsHub = [
   {
     menu: "대시보드/재무",
-    scope: "제품원가, 판매관리비, 일반관리비 입력 권한과 영업이익 산식 버전 관리",
+    scope: "품목별 판매/매입 데이터와 제품원가, 판매관리비, 일반관리비 기준율 및 영업이익 산식 버전 관리",
     owner: "Master · ProfitCostInputManager",
-    controls: ["비용 입력 권한자 지정", "영업이익 산식 버전", "슈퍼바이저 대시보드 노출"],
+    controls: ["비용 기준 설정 권한자 지정", "품목별 판매/매입 기준", "영업이익 산식 버전", "슈퍼바이저 대시보드 노출"],
     badge: "수익성 비용",
     fields: [
-      ["제원원가", "number", "50000000", "원 단위 비용 입력"],
-      ["판관비", "number", "22000000", "판매관리비"],
-      ["일반관리비", "number", "16000000", "일반관리비"],
+      ["제품원가율(%)", "number", String(profitCostSettings.productCostRate * 100), "매출액 대비 제품원가 기준"],
+      ["판관비율(%)", "number", String(profitCostSettings.sellingAdminRate * 100), "매출액 대비 판매관리비 기준"],
+      ["일반관리비율(%)", "number", String(profitCostSettings.generalAdminRate * 100), "매출액 대비 일반관리비 기준"],
       ["산식 버전", "text", "profit-v2026.06", "대시보드 표시 버전"]
     ],
-    toggles: ["슈퍼바이저 대시보드 노출", "저장 전 영향 범위 확인", "비용 변경 결재 대상"],
+    toggles: ["슈퍼바이저 대시보드 노출", "저장 전 영향 범위 확인", "비용 기준 변경 결재 대상"],
     permissions: ["Master", "ProfitCostInputManager"],
-    audit: "제원원가/판관비/일반관리비 변경 전후 값, 영향 범위, 산식 버전이 감사로그에 남습니다."
+    audit: "제품원가율/판관비율/일반관리비율 변경 전후 값, 영향 범위, 산식 버전이 감사로그에 남습니다."
   },
   {
     menu: "고객관리",
@@ -465,33 +483,39 @@ function renderDashboard() {
 
 function renderFinanceInputs() {
   const finance = classifyFinancialRecords();
-  document.querySelector("#financeInputs").innerHTML = rawFinancialRecords
+  const basisCards = [
+    ["품목 매출액", formatWon(finance.revenue), `${productFinanceRecords.length}개 품목 판매금액 합계`],
+    ["품목 매입액", formatWon(finance.purchase), "품목별 매입금액 합계"],
+    ["제품원가", formatWon(finance.product_cost), `매출액 x ${formatPercent(profitCostSettings.productCostRate)}`],
+    ["판매관리비", formatWon(finance.selling_admin), `매출액 x ${formatPercent(profitCostSettings.sellingAdminRate)}`],
+    ["일반관리비", formatWon(finance.general_admin), `매출액 x ${formatPercent(profitCostSettings.generalAdminRate)}`]
+  ];
+  document.querySelector("#financeInputs").innerHTML = basisCards
     .map(
-      (record) => `
-        <label>
-          <span>${record.label}</span>
-          <input class="finance-input" data-finance-id="${record.id}" inputmode="numeric" value="${formatWon(record.amount)}" />
-        </label>
+      ([label, value, help]) => `
+        <div class="finance-basis-card">
+          <span>${label}</span>
+          <strong>${value}</strong>
+          <em>${help}</em>
+        </div>
       `
     )
     .join("");
   document.querySelector("#operatingProfitFormula").innerHTML = `
-    <strong>영업이익 ${formatWon(finance.operatingProfit)}</strong>
-    <span>매출액 ${formatWon(finance.revenue)} - 매입액 ${formatWon(finance.purchase)} - 제품원가 ${formatWon(finance.product_cost)} - 판매관리비 ${formatWon(finance.selling_admin)} - 일반관리비 ${formatWon(finance.general_admin)}</span>
+    <strong>영업이익 ${formatWon(finance.operatingProfit)} · 이익률 ${formatPercent(finance.marginRate)}</strong>
+    <span>품목별 매출 ${formatWon(finance.revenue)} - 품목별 매입 ${formatWon(finance.purchase)} - 제품원가 ${formatWon(finance.product_cost)} - 판매관리비 ${formatWon(finance.selling_admin)} - 일반관리비 ${formatWon(finance.general_admin)}</span>
+    <div class="finance-record-preview">
+      ${productFinanceRecords
+        .slice(0, 4)
+        .map(
+          (record) => `
+            <span>${escapeHtml(record.productName)} · 판매 ${formatWon(record.salesUnitPrice)} · 매입 ${formatWon(record.purchaseUnitPrice)} · ${record.soldQuantity}건</span>
+          `
+        )
+        .join("")}
+    </div>
+    <small>기준 변경 권한: ${profitCostSettings.authorizedRoles.join(", ")} · 현재 사용자 ${currentProfitCostUser.name}(${currentProfitCostUser.role}) · 산식 ${profitCostSettings.formulaVersion}</small>
   `;
-}
-
-function saveFinanceInputs() {
-  document.querySelectorAll(".finance-input").forEach((input) => {
-    const record = rawFinancialRecords.find((item) => item.id === input.dataset.financeId);
-    if (record) record.amount = parseWon(input.value);
-  });
-  const auditId = `AUD-FIN-${Date.now().toString().slice(-6)}`;
-  auditRows.unshift([auditId, "원가/판관비 입력 저장", "현재 사용자", "대시보드", "저장 완료", "영업이익 재계산"]);
-  auditRows.splice(20);
-  renderDashboard();
-  renderAudit();
-  showToast("원천 재무 데이터를 분류 저장하고 영업이익을 재계산했습니다.");
 }
 
 function renderRealtimeSales() {
@@ -679,6 +703,10 @@ function renderPipeline() {
 
 function formatWon(value) {
   return `${Math.round(Number(value) || 0).toLocaleString("ko-KR")}원`;
+}
+
+function formatPercent(value) {
+  return `${(Number(value) * 100).toFixed(1).replace(/\.0$/, "")}%`;
 }
 
 function formatFileSize(bytes) {
@@ -1087,6 +1115,7 @@ function closeSettingsModal() {
 }
 
 function renderSettingsModal() {
+  syncProfitCostSettingsFields();
   const item = settingsHub[activeSettingsIndex];
   document.querySelector("#settingsModalBadge").textContent = item.badge;
   document.querySelector("#settingsModalTitle").textContent = `${item.menu} 설정`;
@@ -1128,6 +1157,14 @@ function renderSettingsModal() {
   `;
 }
 
+function syncProfitCostSettingsFields() {
+  const financeSetting = settingsHub[0];
+  financeSetting.fields[0][2] = String(profitCostSettings.productCostRate * 100);
+  financeSetting.fields[1][2] = String(profitCostSettings.sellingAdminRate * 100);
+  financeSetting.fields[2][2] = String(profitCostSettings.generalAdminRate * 100);
+  financeSetting.fields[3][2] = profitCostSettings.formulaVersion;
+}
+
 function renderSettingsField(label, type, value, help, index) {
   if (type === "select") {
     const options = [value, "권한 검토 필요", "PM 승인 필요", "비활성"];
@@ -1153,18 +1190,49 @@ function renderSettingsField(label, type, value, help, index) {
 function saveSettingsModal() {
   const item = settingsHub[activeSettingsIndex];
   const auditId = padId("AUD", auditRows.length + 1);
+  if (activeSettingsIndex === 0 && !profitCostSettings.authorizedRoles.includes(currentProfitCostUser.role)) {
+    auditRows.unshift([
+      auditId,
+      "수익성 기준 저장 차단",
+      currentProfitCostUser.name,
+      item.menu,
+      "권한 없음",
+      `필요 권한 ${profitCostSettings.authorizedRoles.join(", ")}`
+    ]);
+    auditRows.splice(20);
+    renderAudit();
+    closeSettingsModal();
+    showToast("수익성 기준은 Master 또는 ProfitCostInputManager만 변경할 수 있습니다.");
+    return;
+  }
+  if (activeSettingsIndex === 0) saveProfitCostSettingsFromModal();
   auditRows.unshift([
     auditId,
     "메뉴별 설정 저장",
-    "현재 사용자",
+    currentProfitCostUser.name,
     item.menu,
     "저장 완료",
     "변경 전후 값 · 권한 · 감사로그 안내 확인"
   ]);
   auditRows.splice(20);
   renderAudit();
+  renderDashboard();
+  renderSettingsHub();
   closeSettingsModal();
   showToast(`${item.menu} 설정을 저장하고 감사로그에 기록했습니다.`);
+}
+
+function saveProfitCostSettingsFromModal() {
+  const fields = Array.from(document.querySelectorAll("[data-setting-field]")).map((field) => field.value);
+  profitCostSettings.productCostRate = Math.max(0, parseNumberRate(fields[0]));
+  profitCostSettings.sellingAdminRate = Math.max(0, parseNumberRate(fields[1]));
+  profitCostSettings.generalAdminRate = Math.max(0, parseNumberRate(fields[2]));
+  profitCostSettings.formulaVersion = fields[3] || profitCostSettings.formulaVersion;
+  syncProfitCostSettingsFields();
+}
+
+function parseNumberRate(value) {
+  return (Number(String(value).replace(/[^\d.]/g, "")) || 0) / 100;
 }
 
 function renderDataTable(selector, headers, rows) {
@@ -1428,9 +1496,9 @@ document.addEventListener("click", (event) => {
   }
 
   if (event.target.closest("#refreshButton")) showToast("ETBS OS 화면 데이터를 새로고침했습니다.");
+  if (event.target.closest("#openFinanceSettings")) openSettingsModal(0);
   if (event.target.closest("#saveSalesTargets")) saveSalesTargets();
   if (event.target.closest("#saveProductInventory")) saveProductInventory();
-  if (event.target.closest("#saveFinanceInputs")) saveFinanceInputs();
 
   const memberOption = event.target.closest("[data-team-member-option]");
   if (memberOption && !event.target.closest("[data-team-member]")) {
