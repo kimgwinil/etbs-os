@@ -203,43 +203,107 @@ const settingsHub = [
     menu: "대시보드/재무",
     scope: "제품원가, 판매관리비, 일반관리비 입력 권한과 영업이익 산식 버전 관리",
     owner: "Master · ProfitCostInputManager",
-    controls: ["비용 입력 권한자 지정", "영업이익 산식 버전", "슈퍼바이저 대시보드 노출"]
+    controls: ["비용 입력 권한자 지정", "영업이익 산식 버전", "슈퍼바이저 대시보드 노출"],
+    badge: "수익성 비용",
+    fields: [
+      ["제원원가", "number", "50000000", "원 단위 비용 입력"],
+      ["판관비", "number", "22000000", "판매관리비"],
+      ["일반관리비", "number", "16000000", "일반관리비"],
+      ["산식 버전", "text", "profit-v2026.06", "대시보드 표시 버전"]
+    ],
+    toggles: ["슈퍼바이저 대시보드 노출", "저장 전 영향 범위 확인", "비용 변경 결재 대상"],
+    permissions: ["Master", "ProfitCostInputManager"],
+    audit: "제원원가/판관비/일반관리비 변경 전후 값, 영향 범위, 산식 버전이 감사로그에 남습니다."
   },
   {
     menu: "고객관리",
     scope: "신규/수정 저장 정책, 거래처 담당자 배정, 담당자 다중 선택 기준",
     owner: "관리자",
-    controls: ["고객 신규 등록 승인", "거래처 담당자 다중 배정", "고객 수정 변경 로그"]
+    controls: ["고객 신규 등록 승인", "거래처 담당자 다중 배정", "고객 수정 변경 로그"],
+    badge: "거래처 담당",
+    fields: [
+      ["신규 고객 저장 정책", "select", "중복 경고 후 저장", "저장 전 중복 검사"],
+      ["대표 담당자 기준", "select", "거래처당 1명", "거래처 목록 표시"],
+      ["변경 사유 필수 범위", "select", "연락처/계약/담당자", "타임로그 대상"]
+    ],
+    toggles: ["담당자 다중 선택", "고객 수정 변경 전후 표시", "권한 없는 수정 차단"],
+    permissions: ["관리자", "AM 리더", "개인정보 승인자"],
+    audit: "고객 생성, 수정, 담당자 배정, 대표 담당자 변경은 메뉴별 로그와 타임로그에 남습니다."
   },
   {
     menu: "판매상품",
     scope: "판매가격 표시, 상품 승인 요청, 가격/수수료 변경 승인 기준",
     owner: "상품 승인자",
-    controls: ["판매가격 필수 표시", "상품 승인 결재라인", "가격/수수료 변경 로그"]
+    controls: ["판매가격 필수 표시", "상품 승인 결재라인", "가격/수수료 변경 로그"],
+    badge: "가격 통제",
+    fields: [
+      ["판매가격 표시 방식", "select", "목록 고정 컬럼", "상품/견적/주문 공통"],
+      ["가격 변경 승인 기준", "select", "변경률 5% 이상", "결재 후보"],
+      ["재고 연동 기준", "select", "입출고 상태 갱신", "배송/입출고 연결"]
+    ],
+    toggles: ["판매가격 필수 표시", "할인 후 가격 비교", "가격 변경 이력 링크"],
+    permissions: ["상품 승인자", "Master"],
+    audit: "판매가격, 수수료, 공급사, 재고 변경은 변경 전후 값과 승인 상태가 감사로그에 남습니다."
   },
   {
     menu: "배송/입출고",
     scope: "택배사 연동, 배송 위치 조회, 입고/출고 상태 코드와 예외 처리",
     owner: "운영 처리자",
-    controls: ["택배사 연동 상태", "입고/출고 상태 코드", "배송 예외 알림 기준"]
+    controls: ["택배사 연동 상태", "입고/출고 상태 코드", "배송 예외 알림 기준"],
+    badge: "배송 예외",
+    fields: [
+      ["택배사 연동 모드", "select", "수동 송장+재조회 큐", "API 계약 전 기본값"],
+      ["배송 위치 갱신 주기", "select", "30분", "지연 감지 기준"],
+      ["예외 큐 전환 기준", "select", "지연/반송/오배송/미출고", "운영 콘솔 연동"]
+    ],
+    toggles: ["배송 지연 알림", "수동 송장 입력 허용", "상태 보정 사유 필수"],
+    permissions: ["운영 처리자", "운영 리더"],
+    audit: "송장 입력, 상태 보정, 재조회, 예외 큐 전환은 배송 메뉴 로그로 기록됩니다."
   },
   {
     menu: "영업 파이프라인",
     scope: "견적 발행, 계약 전환, 주문 등록, 매출인식 상태 전이 기준",
     owner: "영업 관리자",
-    controls: ["견적 발행 단계", "계약 전환 조건", "매출인식 상태 전이"]
+    controls: ["견적 발행 단계", "계약 전환 조건", "매출인식 상태 전이"],
+    badge: "매출 흐름",
+    fields: [
+      ["기회 단계", "select", "제안-견적-계약-주문", "파이프라인 칸반"],
+      ["계약 전환 조건", "select", "견적 최종 승인", "주문 등록 게이트"],
+      ["매출인식 기준", "select", "출고/검수/청구 확인", "PM 승인 필요"]
+    ],
+    toggles: ["예상금액 필수", "다음 액션 필수", "저마진 원인 드릴다운"],
+    permissions: ["영업 관리자", "경영자/PM"],
+    audit: "기회 단계 변경, 견적 발행, 계약 전환, 매출인식 상태 변경이 메뉴별 로그에 남습니다."
   },
   {
     menu: "결재/입사등록",
     scope: "로그인 사용자 자동 상신, 결재라인 지정, 승인/반려/보류 상태 처리",
     owner: "결재권한 관리자",
-    controls: ["상신자 자동 지정", "결재라인 순서 변경", "입사등록 최종 승인 전 활성화 차단"]
+    controls: ["상신자 자동 지정", "결재라인 순서 변경", "입사등록 최종 승인 전 활성화 차단"],
+    badge: "승인 상태",
+    fields: [
+      ["결재라인 기본 템플릿", "select", "부서장-보안책임자-최종권자", "입사등록 포함"],
+      ["보류 공식 상태", "select", "사용", "사유 필수"],
+      ["입사등록 활성화 기준", "select", "최종 승인 후 대기", "계정 활성화 표시 금지"]
+    ],
+    toggles: ["상신자 자동 지정", "반려/보류 사유 필수", "현재/다음/최종 결재자 표시"],
+    permissions: ["결재권한 관리자", "HR 관리자"],
+    audit: "결재라인 설정, 승인, 반려, 보류, 입사등록 활성화 대기는 감사로그에 남습니다."
   },
   {
     menu: "로그기록",
     scope: "메뉴 진입, 조회, 생성, 수정, 결재, 반출 로그 조회와 보존 정책",
     owner: "접근로그 감사자",
-    controls: ["메뉴별 로그 필터", "로그 보존 기간", "반출 승인 기록"]
+    controls: ["메뉴별 로그 필터", "로그 보존 기간", "반출 승인 기록"],
+    badge: "감사 추적",
+    fields: [
+      ["기본 로그 탭", "select", "메뉴별 로그", "전체/메뉴별 전환"],
+      ["보존 기간", "select", "감사로그 기준 동일", "PM 승인 필요"],
+      ["반출 권한", "select", "슈퍼바이저+감사 담당", "CSV/Excel 제한"]
+    ],
+    toggles: ["메뉴 진입 로그", "로그 상세 조회 로그", "개인정보 기본 마스킹"],
+    permissions: ["접근로그 감사자", "슈퍼바이저"],
+    audit: "로그 조회와 로그 상세 조회 자체도 감사로그에 남고 권한 없는 접근은 permission_denied로 기록됩니다."
   }
 ];
 
@@ -766,7 +830,102 @@ function renderSettingsHubDetail() {
       ${item.controls.map((control) => `<li>${control}</li>`).join("")}
     </ul>
     <strong>${item.owner}</strong>
+    <button class="primary-button" type="button" data-settings-open="${activeSettingsIndex}">설정 패널 열기</button>
   `;
+}
+
+function openSettingsModal(index) {
+  activeSettingsIndex = index;
+  renderSettingsHub();
+  renderSettingsModal();
+  document.querySelector("#settingsModal").classList.add("active");
+  document.querySelector("#settingsModal").setAttribute("aria-hidden", "false");
+}
+
+function closeSettingsModal() {
+  document.querySelector("#settingsModal").classList.remove("active");
+  document.querySelector("#settingsModal").setAttribute("aria-hidden", "true");
+}
+
+function renderSettingsModal() {
+  const item = settingsHub[activeSettingsIndex];
+  document.querySelector("#settingsModalBadge").textContent = item.badge;
+  document.querySelector("#settingsModalTitle").textContent = `${item.menu} 설정`;
+  document.querySelector("#settingsModalDescription").textContent = item.scope;
+  document.querySelector("#settingsModalNotice").textContent = item.audit;
+  document.querySelector("#settingsModalForm").innerHTML = `
+    <section class="settings-modal-section">
+      <div class="settings-modal-section-title">
+        <strong>설정 가능한 필드</strong>
+        <span class="status-pill active">선택 항목 활성</span>
+      </div>
+      <div class="settings-field-grid">
+        ${item.fields.map(([label, type, value, help], index) => renderSettingsField(label, type, value, help, index)).join("")}
+      </div>
+    </section>
+    <section class="settings-modal-section">
+      <div class="settings-modal-section-title">
+        <strong>토글</strong>
+        <span>켜짐 상태는 저장 대상입니다.</span>
+      </div>
+      <div class="settings-toggle-grid">
+        ${item.toggles.map((toggle, index) => `
+          <label class="settings-toggle active">
+            <input type="checkbox" checked data-setting-toggle="${index}" />
+            <span>${toggle}</span>
+          </label>
+        `).join("")}
+      </div>
+    </section>
+    <section class="settings-modal-section">
+      <div class="settings-modal-section-title">
+        <strong>수정 권한</strong>
+        <span>권한 없는 사용자는 메뉴 숨김 또는 차단 사유 표시</span>
+      </div>
+      <div class="permission-chip-row">
+        ${item.permissions.map((permission) => `<span class="permission-chip active">${permission}</span>`).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderSettingsField(label, type, value, help, index) {
+  if (type === "select") {
+    const options = [value, "권한 검토 필요", "PM 승인 필요", "비활성"];
+    return `
+      <label class="settings-field">
+        <span>${label}</span>
+        <select data-setting-field="${index}">
+          ${options.map((option) => `<option ${option === value ? "selected" : ""}>${option}</option>`).join("")}
+        </select>
+        <em>${help}</em>
+      </label>
+    `;
+  }
+  return `
+    <label class="settings-field">
+      <span>${label}</span>
+      <input type="${type}" value="${value}" data-setting-field="${index}" />
+      <em>${help}</em>
+    </label>
+  `;
+}
+
+function saveSettingsModal() {
+  const item = settingsHub[activeSettingsIndex];
+  const auditId = padId("AUD", auditRows.length + 1);
+  auditRows.unshift([
+    auditId,
+    "메뉴별 설정 저장",
+    "현재 사용자",
+    item.menu,
+    "저장 완료",
+    "변경 전후 값 · 권한 · 감사로그 안내 확인"
+  ]);
+  auditRows.splice(20);
+  renderAudit();
+  closeSettingsModal();
+  showToast(`${item.menu} 설정을 저장하고 감사로그에 기록했습니다.`);
 }
 
 function renderDataTable(selector, headers, rows) {
@@ -1000,14 +1159,27 @@ document.addEventListener("click", (event) => {
   if (settingsHubButton) {
     activeSettingsIndex = Number(settingsHubButton.dataset.settingsIndex);
     renderSettingsHub();
-    showToast(`${settingsHub[activeSettingsIndex].menu} 설정을 활성화했습니다.`);
+    openSettingsModal(activeSettingsIndex);
+    showToast(`${settingsHub[activeSettingsIndex].menu} 설정 창을 열었습니다.`);
   }
+
+  const settingsOpenButton = event.target.closest("[data-settings-open]");
+  if (settingsOpenButton) {
+    openSettingsModal(Number(settingsOpenButton.dataset.settingsOpen));
+    showToast(`${settingsHub[activeSettingsIndex].menu} 설정 창을 열었습니다.`);
+  }
+
+  if (event.target.closest("#settingsModalClose")) closeSettingsModal();
+  if (event.target.closest("#settingsModalCancel")) closeSettingsModal();
+  if (event.target.closest("#settingsModalSave")) saveSettingsModal();
 
   if (event.target.closest("#commandClose")) closeCommandPanel();
   if (event.target.closest("#commandCancel")) closeCommandPanel();
   if (event.target.closest("#commandSave")) saveCommandForm();
 
-  const isInlineControl = event.target.closest("input, select, textarea, #saveProductInventory, #saveSalesTargets, #commandSave, #commandCancel, #commandClose");
+  const isInlineControl = event.target.closest(
+    "input, select, textarea, #saveProductInventory, #saveSalesTargets, #settingsModalSave, #settingsModalCancel, #settingsModalClose, #commandSave, #commandCancel, #commandClose"
+  );
   const commandTarget = isInlineControl ? null : event.target.closest("[data-command]");
   if (commandTarget) {
     openCommandPanel(commandTarget.dataset.command, commandTarget.dataset.commandLabel || commandTarget.textContent.trim());
