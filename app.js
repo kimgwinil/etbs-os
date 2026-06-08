@@ -189,6 +189,7 @@ const auditRows = [
 
 const toast = document.querySelector("#toast");
 let auditFilter = "all";
+let activeSettingsIndex = 0;
 
 const approvalLines = [
   ["정산 승인", "정산팀 김서연", "재무리더", "승인/반려/보류"],
@@ -198,13 +199,48 @@ const approvalLines = [
 ];
 
 const settingsHub = [
-  ["대시보드/재무", "제품원가, 판매관리비, 일반관리비 입력 권한과 영업이익 산식 버전 관리", "Master · ProfitCostInputManager"],
-  ["고객관리", "신규/수정 저장 정책, 거래처 담당자 배정, 담당자 다중 선택 기준", "관리자"],
-  ["판매상품", "판매가격 표시, 상품 승인 요청, 가격/수수료 변경 승인 기준", "상품 승인자"],
-  ["배송/입출고", "택배사 연동, 배송 위치 조회, 입고/출고 상태 코드와 예외 처리", "운영 처리자"],
-  ["영업 파이프라인", "견적 발행, 계약 전환, 주문 등록, 매출인식 상태 전이 기준", "영업 관리자"],
-  ["결재/입사등록", "로그인 사용자 자동 상신, 결재라인 지정, 승인/반려/보류 상태 처리", "결재권한 관리자"],
-  ["로그기록", "메뉴 진입, 조회, 생성, 수정, 결재, 반출 로그 조회와 보존 정책", "접근로그 감사자"]
+  {
+    menu: "대시보드/재무",
+    scope: "제품원가, 판매관리비, 일반관리비 입력 권한과 영업이익 산식 버전 관리",
+    owner: "Master · ProfitCostInputManager",
+    controls: ["비용 입력 권한자 지정", "영업이익 산식 버전", "슈퍼바이저 대시보드 노출"]
+  },
+  {
+    menu: "고객관리",
+    scope: "신규/수정 저장 정책, 거래처 담당자 배정, 담당자 다중 선택 기준",
+    owner: "관리자",
+    controls: ["고객 신규 등록 승인", "거래처 담당자 다중 배정", "고객 수정 변경 로그"]
+  },
+  {
+    menu: "판매상품",
+    scope: "판매가격 표시, 상품 승인 요청, 가격/수수료 변경 승인 기준",
+    owner: "상품 승인자",
+    controls: ["판매가격 필수 표시", "상품 승인 결재라인", "가격/수수료 변경 로그"]
+  },
+  {
+    menu: "배송/입출고",
+    scope: "택배사 연동, 배송 위치 조회, 입고/출고 상태 코드와 예외 처리",
+    owner: "운영 처리자",
+    controls: ["택배사 연동 상태", "입고/출고 상태 코드", "배송 예외 알림 기준"]
+  },
+  {
+    menu: "영업 파이프라인",
+    scope: "견적 발행, 계약 전환, 주문 등록, 매출인식 상태 전이 기준",
+    owner: "영업 관리자",
+    controls: ["견적 발행 단계", "계약 전환 조건", "매출인식 상태 전이"]
+  },
+  {
+    menu: "결재/입사등록",
+    scope: "로그인 사용자 자동 상신, 결재라인 지정, 승인/반려/보류 상태 처리",
+    owner: "결재권한 관리자",
+    controls: ["상신자 자동 지정", "결재라인 순서 변경", "입사등록 최종 승인 전 활성화 차단"]
+  },
+  {
+    menu: "로그기록",
+    scope: "메뉴 진입, 조회, 생성, 수정, 결재, 반출 로그 조회와 보존 정책",
+    owner: "접근로그 감사자",
+    controls: ["메뉴별 로그 필터", "로그 보존 기간", "반출 승인 기록"]
+  }
 ];
 
 const commandTemplates = {
@@ -706,15 +742,31 @@ function renderApprovalLines() {
 function renderSettingsHub() {
   document.querySelector("#settingsHub").innerHTML = settingsHub
     .map(
-      ([menu, scope, owner]) => `
-        <div class="settings-hub-item">
+      ({ menu, scope, owner }, index) => `
+        <button class="settings-hub-item ${index === activeSettingsIndex ? "active" : ""}" type="button" data-settings-index="${index}">
           <strong>${menu}</strong>
           <p>${scope}</p>
           <span>${owner}</span>
-        </div>
+        </button>
       `
     )
     .join("");
+  renderSettingsHubDetail();
+}
+
+function renderSettingsHubDetail() {
+  const item = settingsHub[activeSettingsIndex];
+  document.querySelector("#settingsHubDetail").innerHTML = `
+    <div>
+      <span class="status-pill">활성 설정</span>
+      <h3>${item.menu}</h3>
+      <p>${item.scope}</p>
+    </div>
+    <ul>
+      ${item.controls.map((control) => `<li>${control}</li>`).join("")}
+    </ul>
+    <strong>${item.owner}</strong>
+  `;
 }
 
 function renderDataTable(selector, headers, rows) {
@@ -942,6 +994,13 @@ document.addEventListener("click", (event) => {
     auditFilter = auditFilterButton.dataset.auditFilter;
     renderAudit();
     showToast("감사 로그 필터를 적용했습니다.");
+  }
+
+  const settingsHubButton = event.target.closest("[data-settings-index]");
+  if (settingsHubButton) {
+    activeSettingsIndex = Number(settingsHubButton.dataset.settingsIndex);
+    renderSettingsHub();
+    showToast(`${settingsHub[activeSettingsIndex].menu} 설정을 활성화했습니다.`);
   }
 
   if (event.target.closest("#commandClose")) closeCommandPanel();
