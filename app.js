@@ -843,13 +843,13 @@ function renderTeamMembers() {
   document.querySelector("#teamMemberPicker").innerHTML = chatMembers
     .map(
       (member) => `
-        <label class="member-option ${selectedTeamMemberIds.includes(member.id) ? "active" : ""}">
+        <div class="member-option ${selectedTeamMemberIds.includes(member.id) ? "active" : ""}" role="button" tabindex="0" data-team-member-option="${member.id}">
           <input type="checkbox" value="${member.id}" data-team-member="${member.id}" ${selectedTeamMemberIds.includes(member.id) ? "checked" : ""} />
           <span>
             <strong>${escapeHtml(member.team)} ${escapeHtml(member.name)}</strong>
             <em>${escapeHtml(member.role)}</em>
           </span>
-        </label>
+        </div>
       `
     )
     .join("");
@@ -917,6 +917,11 @@ function enterSelectedTeamRoom() {
   }
   const type = selected.length === 1 ? "dm" : "group";
   createTeamRoom(type);
+}
+
+function enterDirectTeamMemberRoom(memberId) {
+  selectedTeamMemberIds = [memberId];
+  createTeamRoom("dm");
 }
 
 function createTeamRoom(type) {
@@ -1343,6 +1348,20 @@ function openTeamAttachment() {
   showToast(`${room.title} 파일 첨부 진입 로그를 기록했습니다.`);
 }
 
+function sendTeamMessage() {
+  const input = document.querySelector("#teamMessage");
+  if (!input.value.trim()) return;
+  const room = getActiveTeamRoom();
+  const auditId = `AUD-CHAT-${Date.now().toString().slice(-6)}`;
+  room.messages.push([getCurrentSenderLabel(), input.value.trim(), auditId, formatChatTime()]);
+  auditRows.unshift([auditId, "채팅 메시지 전송", "현재 사용자", room.title, "전송 완료", "채팅 로그 보존"]);
+  auditRows.splice(20);
+  input.value = "";
+  renderChats();
+  renderAudit();
+  showToast(`${room.title} 메시지를 전송하고 채팅 로그를 기록했습니다.`);
+}
+
 document.addEventListener("click", (event) => {
   const navItem = event.target.closest(".nav-item");
   if (navItem) showView(navItem.dataset.view);
@@ -1361,6 +1380,12 @@ document.addEventListener("click", (event) => {
   if (event.target.closest("#saveSalesTargets")) saveSalesTargets();
   if (event.target.closest("#saveProductInventory")) saveProductInventory();
   if (event.target.closest("#saveFinanceInputs")) saveFinanceInputs();
+
+  const memberOption = event.target.closest("[data-team-member-option]");
+  if (memberOption && !event.target.closest("[data-team-member]")) {
+    event.preventDefault();
+    enterDirectTeamMemberRoom(memberOption.dataset.teamMemberOption);
+  }
 
   const teamRoomButton = event.target.closest("[data-team-room]");
   if (teamRoomButton) {
@@ -1422,6 +1447,18 @@ document.addEventListener("change", (event) => {
   enterSelectedTeamRoom();
 });
 
+document.addEventListener("keydown", (event) => {
+  if (event.target.closest("#teamMessage") && event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    sendTeamMessage();
+  }
+  const memberOption = event.target.closest("[data-team-member-option]");
+  if (memberOption && event.key === "Enter") {
+    event.preventDefault();
+    enterDirectTeamMemberRoom(memberOption.dataset.teamMemberOption);
+  }
+});
+
 function openChatPopup(type) {
   closeAllChatPopups();
   document.querySelector("#chatBackdrop").classList.add("active");
@@ -1450,19 +1487,7 @@ document.querySelector("#aiSend").addEventListener("click", () => {
   showToast("AI 프롬프트 로그 AUD-AI-9001을 기록했습니다.");
 });
 
-document.querySelector("#teamSend").addEventListener("click", () => {
-  const input = document.querySelector("#teamMessage");
-  if (!input.value.trim()) return;
-  const room = getActiveTeamRoom();
-  const auditId = `AUD-CHAT-${Date.now().toString().slice(-6)}`;
-  room.messages.push([getCurrentSenderLabel(), input.value.trim(), auditId, formatChatTime()]);
-  auditRows.unshift([auditId, "채팅 메시지 전송", "현재 사용자", room.title, "전송 완료", "채팅 로그 보존"]);
-  auditRows.splice(20);
-  input.value = "";
-  renderChats();
-  renderAudit();
-  showToast(`${room.title} 메시지를 전송하고 채팅 로그를 기록했습니다.`);
-});
+document.querySelector("#teamSend").addEventListener("click", sendTeamMessage);
 
 renderNav();
 renderDashboard();
