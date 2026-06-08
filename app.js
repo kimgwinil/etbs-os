@@ -1226,7 +1226,7 @@ function renderMessage([role, message]) {
   `;
 }
 
-function renderEmployees() {
+function renderEmployees(activeEmployeeId = activeHrEmployeeId) {
   const employeeRows = employees.map((employee) => {
     const record = getHrEmployeeRecord(employee);
     return [
@@ -1243,7 +1243,8 @@ function renderEmployees() {
     ];
   });
   renderDataTable("#employeeTable", ["직원 ID", "이름", "직급", "생년월일", "고객사", "조직", "재직상태", "입사일", "퇴사일", "잔여연차"], employeeRows);
-  renderEmployeeDetail(employees[0][0]);
+  activeHrEmployeeId = employees.some((employee) => employee[0] === activeEmployeeId) ? activeEmployeeId : employees[0][0];
+  renderEmployeeDetail(activeHrEmployeeId);
   renderHrLeaveManagement();
 }
 
@@ -1413,10 +1414,115 @@ function renderHrLeaveDetail(employeeId) {
       <button class="primary-button" type="button" data-leave-request="${record.id}">연차 신청</button>
     </div>
     <div class="notice">신상명세 원문과 생년월일 전체값은 권한과 열람 사유가 있어야 확인 가능합니다. 연차 계산식과 휴직/병가 처리 기준은 PM 승인 필요입니다.</div>
+    <form class="inline-edit-form" data-hr-edit-form="${record.id}">
+      <div class="settings-modal-section-title">
+        <strong>현재 화면 수정</strong>
+        <span>목록을 보면서 저장하면 즉시 반영됩니다.</span>
+      </div>
+      <div class="settings-field-grid">
+        <label class="settings-field">
+          <span>이름</span>
+          <input type="text" value="${record.name}" data-hr-edit-field="name" />
+          <em>저장 후 목록과 상세가 함께 갱신됩니다.</em>
+        </label>
+        <label class="settings-field">
+          <span>직급</span>
+          <select data-hr-edit-field="rank">
+            ${employeeRanks.map((rank) => `<option ${rank === record.position ? "selected" : ""}>${rank}</option>`).join("")}
+          </select>
+          <em>직급 기준 필터와 인사 현황에 사용됩니다.</em>
+        </label>
+        <label class="settings-field">
+          <span>생년월일</span>
+          <input type="date" value="${record.birthDate}" data-hr-edit-field="birthDate" />
+          <em>목록에는 마스킹 값만 표시됩니다.</em>
+        </label>
+        <label class="settings-field">
+          <span>입사일</span>
+          <input type="date" value="${record.hireDate}" data-hr-edit-field="hireDate" />
+          <em>연차 자동계산 기준입니다.</em>
+        </label>
+        <label class="settings-field">
+          <span>퇴사일</span>
+          <input type="date" value="${record.resignDate === "-" ? "" : record.resignDate}" data-hr-edit-field="terminationDate" />
+          <em>퇴사 상태일 때만 필수 후보입니다.</em>
+        </label>
+        <label class="settings-field">
+          <span>재직상태</span>
+          <select data-hr-edit-field="employmentState">
+            ${["재직", "퇴사", "휴직", "병가"].map((status) => `<option ${status === record.employmentState ? "selected" : ""}>${status}</option>`).join("")}
+          </select>
+          <em>상태 변경은 감사로그에 남습니다.</em>
+        </label>
+        <label class="settings-field">
+          <span>사용 연차</span>
+          <input type="number" min="0" value="${record.usedLeave}" data-hr-edit-field="leaveUsed" />
+          <em>승인 완료 연차 기준입니다.</em>
+        </label>
+        <label class="settings-field">
+          <span>승인대기 연차</span>
+          <input type="number" min="0" value="${record.pendingLeave}" data-hr-edit-field="leavePending" />
+          <em>상신 후 결재 전 연차입니다.</em>
+        </label>
+      </div>
+      <div class="inline-edit-actions">
+        <button class="primary-button" type="button" data-hr-edit-save="${record.id}">수정 저장</button>
+        <button class="secondary-button" type="button" data-hr-edit-cancel="${record.id}">취소</button>
+      </div>
+    </form>
     <div class="hr-request-list">
       ${recentRequests.length ? recentRequests.map(renderLeaveRequestItem).join("") : "<span>최근 연차 신청 없음</span>"}
     </div>
   `;
+}
+
+function saveHrInlineEdit(employeeId) {
+  const employee = employees.find((item) => item[0] === employeeId);
+  const profile = employeeProfiles.find((item) => item.id === employeeId);
+  const form = document.querySelector(`[data-hr-edit-form="${employeeId}"]`);
+  if (!employee || !profile || !form) return;
+  const readField = (field) => form.querySelector(`[data-hr-edit-field="${field}"]`)?.value.trim() || "";
+  const before = getHrEmployeeRecord(employee);
+  const nextName = readField("name");
+  const nextBirthDate = readField("birthDate");
+  const nextHireDate = readField("hireDate");
+  const nextStatus = readField("employmentState");
+  const nextTerminationDate = readField("terminationDate");
+  if (!nextName || !nextBirthDate || !nextHireDate) {
+    showToast("이름, 생년월일, 입사일은 필수입니다.");
+    return;
+  }
+  if (nextStatus === "퇴사" && !nextTerminationDate) {
+    showToast("퇴사 상태는 퇴사일을 입력해야 합니다.");
+    return;
+  }
+  employee[1] = nextName;
+  employee[4] = nextStatus;
+  employee[5] = nextHireDate;
+  employee[7] = nextStatus === "퇴사" ? "권한 회수 완료" : employee[7] === "권한 회수 완료" ? "정상" : employee[7];
+  profile.rank = readField("rank") || profile.rank;
+  profile.birthDate = nextBirthDate;
+  profile.maskedBirthDate = `${nextBirthDate.slice(0, 4)}-**-**`;
+  profile.hireDate = nextHireDate;
+  profile.terminationDate = nextStatus === "퇴사" ? nextTerminationDate : "";
+  profile.leaveUsed = Math.max(0, Number(readField("leaveUsed")) || 0);
+  profile.leavePending = nextStatus === "재직" ? Math.max(0, Number(readField("leavePending")) || 0) : 0;
+  hrLeaveUsage[employeeId] = profile.leaveUsed;
+  const after = getHrEmployeeRecord(employee);
+  const auditId = `AUD-HR-${Date.now().toString().slice(-6)}`;
+  auditRows.unshift([
+    auditId,
+    "임직원 현재 화면 수정",
+    currentProfitCostUser.name,
+    employeeId,
+    "저장 완료",
+    `${before.name}/${before.employmentState}/${before.remainingLeave}일 -> ${after.name}/${after.employmentState}/${after.remainingLeave}일`
+  ]);
+  auditRows.splice(20);
+  activeHrEmployeeId = employeeId;
+  renderEmployees(employeeId);
+  renderAudit();
+  showToast(`${after.maskedName} 정보를 현재 화면에서 저장했습니다.`);
 }
 
 function renderLeaveRequestItem(request) {
@@ -1921,8 +2027,9 @@ function savePipeline(values) {
 }
 
 function saveEmployee(values) {
+  const newEmployeeId = padId("EMP", employees.length + 1);
   employees.unshift([
-    padId("EMP", employees.length + 1),
+    newEmployeeId,
     values.employeeName,
     values.customerName,
     values.team,
@@ -1931,10 +2038,20 @@ function saveEmployee(values) {
     values.approvalRole,
     "정상"
   ]);
+  employeeProfiles.unshift({
+    id: newEmployeeId,
+    rank: "사원",
+    birthDate: "1990-01-01",
+    maskedBirthDate: "1990-**-**",
+    hireDate: values.startDate,
+    terminationDate: "",
+    leaveUsed: 0,
+    leavePending: 0
+  });
+  hrLeaveUsage[newEmployeeId] = 0;
   renderDashboard();
-  renderEmployees();
-  activeHrEmployeeId = employees[0][0];
-  renderHrLeaveManagement();
+  activeHrEmployeeId = newEmployeeId;
+  renderEmployees(newEmployeeId);
 }
 
 function handleTeamAttachment(files) {
@@ -2018,6 +2135,19 @@ document.addEventListener("click", (event) => {
   const leaveDecisionButton = event.target.closest("[data-leave-decision]");
   if (leaveDecisionButton) {
     decideAnnualLeaveRequest(leaveDecisionButton.dataset.leaveRequestId, leaveDecisionButton.dataset.leaveDecision);
+    return;
+  }
+
+  const hrEditSaveButton = event.target.closest("[data-hr-edit-save]");
+  if (hrEditSaveButton) {
+    saveHrInlineEdit(hrEditSaveButton.dataset.hrEditSave);
+    return;
+  }
+
+  const hrEditCancelButton = event.target.closest("[data-hr-edit-cancel]");
+  if (hrEditCancelButton) {
+    renderHrLeaveDetail(hrEditCancelButton.dataset.hrEditCancel);
+    showToast("현재 화면 수정 내용을 취소했습니다.");
     return;
   }
 

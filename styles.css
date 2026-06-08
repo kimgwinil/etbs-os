@@ -576,6 +576,29 @@ h3 {
   gap: 6px;
 }
 
+.inline-edit-form {
+  margin: 14px;
+  border: 1px solid #c7ddda;
+  border-radius: 8px;
+  background: #f7fbfa;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.inline-edit-form .settings-field-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.inline-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
 .donut-wrap {
   padding: 18px;
   display: grid;
@@ -1880,7 +1903,8 @@ input {
     grid-template-columns: 1fr;
   }
 
-  .settings-field-grid {
+  .settings-field-grid,
+  .inline-edit-form .settings-field-grid {
     grid-template-columns: 1fr;
   }
 
