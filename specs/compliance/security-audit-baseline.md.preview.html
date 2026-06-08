@@ -166,6 +166,10 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td>공개 IP 직접 개방 비권고, VPN/허용 IP/Zero Trust/임시 터널 후보, 개인별 계정/만료/로그</td>
 </tr>
 <tr>
+<td>팀 채팅 통제 요구사항</td>
+<td>참여자 선택 표시 범위, 채팅방 생성/참여자 추가/메시지/파일 로그, 외부 초대 차단</td>
+</tr>
+<tr>
 <td>위험-통제 매핑</td>
 <td>위험 ID, 통제 ID, 증적, 담당, 상태</td>
 </tr>
@@ -320,6 +324,12 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td>외주 접속 제한</td>
 <td>외주 인력 접속은 공개 IP 직접 개방을 비권고로 두고 승인된 VPN, 허용 IP, Zero Trust, 만료형 임시 터널 후보만 허용한다.</td>
 <td>외주 검수 지연을 줄이면서 노출 사고와 계정 방치 비용을 예방한다.</td>
+</tr>
+<tr>
+<td><code>SEC-16</code></td>
+<td>팀 채팅 최소노출</td>
+<td>팀 채팅 참여자 선택은 부서, 이름, 권한 표시를 최소화하고 외부/권한 없는 사용자 초대를 차단한다.</td>
+<td>협업 속도는 유지하면서 채팅 권한 누락과 감사 조사 비용을 줄인다.</td>
 </tr>
 </tbody>
 </table>
@@ -553,6 +563,28 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td>거부</td>
 <td>거부</td>
 <td>거부</td>
+<td>거부</td>
+<td>거부</td>
+<td>거부</td>
+<td>거부</td>
+<td>승인 필요</td>
+</tr>
+<tr>
+<td>팀 채팅방 생성/참여자 추가</td>
+<td>거부</td>
+<td>제한</td>
+<td>제한</td>
+<td>거부</td>
+<td>거부</td>
+<td>거부</td>
+<td>거부</td>
+<td>승인 필요</td>
+</tr>
+<tr>
+<td>팀 채팅 파일 첨부/다운로드</td>
+<td>거부</td>
+<td>제한</td>
+<td>제한</td>
 <td>거부</td>
 <td>거부</td>
 <td>거부</td>
@@ -1015,6 +1047,49 @@ pre code { background: transparent; padding: 0; color: inherit; }
 </tbody>
 </table>
 <p>인당 생산성/마진 기여: 외주 검수 속도를 확보하면서 보안 사고와 사후 권한 회수 비용을 줄인다.</p>
+<h2>6.10 팀 채팅 개인정보/감사로그/권한 요구사항</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>요구사항</th>
+<th>인수조건</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CHAT-01</code></td>
+<td>채팅방 유형은 개인대개인, 단톡방, 참여자 선택 방식 후보로 구분한다.</td>
+<td>방 유형, 생성자, 목적, 테넌트 범위, 참여자 수가 감사로그에 남아야 한다.</td>
+</tr>
+<tr>
+<td><code>CHAT-02</code></td>
+<td>참여자 선택 시 부서, 이름, 권한 표시 범위는 최소 필요 정보로 제한한다.</td>
+<td>상세 권한, 개인정보 원문, 타 테넌트 사용자 정보는 PM 승인 없이 노출하지 않는다.</td>
+</tr>
+<tr>
+<td><code>CHAT-03</code></td>
+<td>외부 사용자, 타 테넌트 사용자, 권한 없는 사용자의 초대는 차단한다.</td>
+<td>초대 차단은 <code>permission_denied</code>, 행위자, 대상자, 사유로 기록되어야 한다.</td>
+</tr>
+<tr>
+<td><code>CHAT-04</code></td>
+<td>채팅방 생성, 참여자 추가/제거, 메시지 전송, 파일 첨부, 다운로드 시도는 로그 대상이다.</td>
+<td><code>chat_room_id</code>, <code>message_id</code>, <code>attachment_id</code>, <code>actor_user_id</code>로 조회 가능해야 한다.</td>
+</tr>
+<tr>
+<td><code>CHAT-05</code></td>
+<td>개인정보·민감정보 포함 메시지와 파일 첨부는 원문 최소 보존, 마스킹, 다운로드 제한 후보로 관리한다.</td>
+<td>콘텐츠 위험 분류, 파일 유형/크기, 마스킹 여부, 다운로드 권한, 보존기간 후보가 기록되어야 한다.</td>
+</tr>
+<tr>
+<td><code>CHAT-06</code></td>
+<td>채팅 로그 상세 조회와 반출 요청은 별도 권한과 감사로그를 요구한다.</td>
+<td>보안/감사 목적 없는 채팅 로그 조회와 반출은 차단되어야 한다.</td>
+</tr>
+</tbody>
+</table>
+<p>인당 생산성/마진 기여: 채팅 협업 속도는 유지하면서 초대 오류, 파일 반출, 개인정보 메시지 조사 비용을 줄인다.</p>
 <h2>7. 테넌트 격리 요구사항</h2>
 <table>
 <thead>
@@ -1097,6 +1172,12 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td>외주 접속은 <code>dev</code> 또는 <code>staging</code>과 승인된 메뉴 범위로 제한한다.</td>
 <td>운영 환경, 개인정보 원문, 운영 시크릿, 다운로드는 승인 없이 접근할 수 없어야 한다.</td>
 <td>A7, A8, A9</td>
+</tr>
+<tr>
+<td><code>TEN-13</code></td>
+<td>팀 채팅 참여자 조회와 초대는 테넌트, 부서/업무 범위, 역할로 제한한다.</td>
+<td>외부 사용자, 타 테넌트 사용자, 권한 없는 사용자는 초대할 수 없어야 한다.</td>
+<td>A1, A2, A3, A7</td>
 </tr>
 </tbody>
 </table>
@@ -1201,6 +1282,12 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td>외주 계정의 개인정보 또는 운영 데이터 접근 시도</td>
 <td>외주 사용자 ID, 메뉴 ID, 대상, 마스킹 여부, 결과, 차단 사유</td>
 <td>로그 실패 시 조회 보류</td>
+</tr>
+<tr>
+<td><code>PAL-16</code></td>
+<td>채팅 참여자 선택과 개인정보 포함 메시지/파일 조회</td>
+<td>채팅방 ID, 참여자 ID, 필드 그룹, 콘텐츠 위험 분류, 마스킹 여부, 목적</td>
+<td>로그 실패 시 상세 조회 보류</td>
 </tr>
 </tbody>
 </table>
@@ -1385,6 +1472,12 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td>업체, 외주 사용자, 접속 방식, 허용 IP/정책, 만료일, MFA 후보, 결과, 회수자</td>
 <td>외주 접근 통제</td>
 </tr>
+<tr>
+<td><code>AUD-29</code></td>
+<td>팀 채팅방/메시지/파일 이벤트</td>
+<td>채팅방 ID, 방 유형, 참여자, 메시지 ID, 첨부 ID, 이벤트 유형, 콘텐츠 위험 분류, 결과</td>
+<td>협업 감사/개인정보 통제</td>
+</tr>
 </tbody>
 </table>
 <p>외감 제출 대상 이벤트, 제출 형식, 보존기간은 PM 승인 필요.</p>
@@ -1502,6 +1595,12 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td>접속 승인, 로그인 성공/실패, 메뉴 진입, 조회, 변경, 다운로드 시도, 권한 차단, 계정/정책 회수</td>
 <td><code>vendor_user_id</code>, <code>access_policy_id</code>, <code>menu_id</code></td>
 </tr>
+<tr>
+<td><code>TL-18</code></td>
+<td>팀 채팅</td>
+<td>채팅방 생성, 참여자 추가/제거, 메시지 전송, 파일 첨부, 다운로드 시도, 권한 없는 초대 차단</td>
+<td><code>chat_room_id</code>, <code>message_id</code>, <code>attachment_id</code></td>
+</tr>
 </tbody>
 </table>
 <p>인당 생산성/마진 기여: 핵심 업무 이력을 자동 축적해 병목과 이익 저하 원인 분석에 드는 수작업을 줄인다.</p>
@@ -1618,6 +1717,12 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td>외주 접근 통제, 계정 회수, 보안 점검</td>
 <td>PM 승인 필요</td>
 </tr>
+<tr>
+<td><code>RET-18</code></td>
+<td>팀 채팅 이력</td>
+<td>협업 증적, 개인정보/파일 반출 통제, 내부 감사</td>
+<td>PM 승인 필요</td>
+</tr>
 </tbody>
 </table>
 <p>인당 생산성/마진 기여: 데이터 유형별 보존 결정을 분리해 저장비와 법적 리스크를 동시에 낮춘다.</p>
@@ -1721,6 +1826,11 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td>외주 인터넷 접속 -&gt; dev/staging -&gt; 메뉴별 로그</td>
 <td>공개 IP 직접 개방 비권고, VPN/허용 IP/Zero Trust/임시 터널 후보, 개인별 계정, 만료일, 마스킹, 다운로드 차단</td>
 <td>외부연동/보안운영 기준</td>
+</tr>
+<tr>
+<td>팀 채팅 -&gt; 메시지/파일 첨부 -&gt; 로그/보존</td>
+<td>내부 참여자 제한, 참여자 표시 최소화, 외부 초대 차단, 개인정보/민감정보 탐지 후보, 파일 다운로드 제한</td>
+<td>개인정보/임직원정보 접근 범위</td>
 </tr>
 </tbody>
 </table>
@@ -1930,6 +2040,14 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td>공개 IP 직접 개방 비권고, 승인된 접속 방식, 개인별 계정, 만료일, 마스킹, 다운로드 차단</td>
 <td>외주 승인 기록, 접속로그, 메뉴별 로그, 회수 이력</td>
 </tr>
+<tr>
+<td><code>R-25</code></td>
+<td>개인정보/ISMS</td>
+<td>채팅 참여자 선택 과다 노출 또는 권한 없는 초대/파일 첨부</td>
+<td><code>CHAT-01~06</code>, <code>PAL-16</code>, <code>AUD-29</code>, <code>TL-18</code></td>
+<td>참여자 표시 최소화, 외부/권한 없는 초대 차단, 메시지/파일 로그, 첨부 다운로드 제한</td>
+<td>채팅 감사로그, 첨부파일 로그, 권한 차단 로그</td>
+</tr>
 </tbody>
 </table>
 <p>인당 생산성/마진 기여: 위험과 통제를 ID로 연결해 QA와 감사 준비를 체크리스트화한다.</p>
@@ -2064,6 +2182,12 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td>업체, 외주 사용자, 접속 방식, 허용 IP/정책, 만료일, 메뉴별 활동, 다운로드 차단, 회수 이력</td>
 <td>외주 접속 승인부터 회수까지 추적할 수 있어야 한다.</td>
 </tr>
+<tr>
+<td><code>EVID-21</code></td>
+<td>팀 채팅 증적</td>
+<td>채팅방 ID, 방 유형, 참여자, 메시지 ID, 첨부 ID, 이벤트 유형, 권한 차단, 콘텐츠 위험 분류</td>
+<td>채팅 생성부터 파일 첨부와 권한 차단까지 추적할 수 있어야 한다.</td>
+</tr>
 </tbody>
 </table>
 <p>인당 생산성/마진 기여: 외감 증적의 필수 필드를 고정해 샘플 요청 대응과 월마감 검산 시간을 줄인다.</p>
@@ -2086,8 +2210,8 @@ pre code { background: transparent; padding: 0; color: inherit; }
 </tr>
 <tr>
 <td>개인정보</td>
-<td>입사등록/임직원정보 최소 처리, 외주 접속 데이터 마스킹, 거래처별 담당자 노출 제한, 목적 제한, 마스킹, 접근기록, 보존/파기, 위탁 관리</td>
-<td>개인정보 접근로그, 외주 접근로그, 입사등록 접근로그, 임직원정보 드릴다운 로그, 메뉴별 로그 마스킹, 반출 이력</td>
+<td>입사등록/임직원정보 최소 처리, 채팅 참여자/메시지/파일 개인정보 통제, 외주 접속 데이터 마스킹, 거래처별 담당자 노출 제한, 목적 제한, 마스킹, 접근기록, 보존/파기, 위탁 관리</td>
+<td>개인정보 접근로그, 채팅 감사로그, 외주 접근로그, 입사등록 접근로그, 임직원정보 드릴다운 로그, 메뉴별 로그 마스킹, 반출 이력</td>
 <td>개인정보/임직원정보 접근 범위</td>
 </tr>
 <tr>
@@ -2285,6 +2409,12 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td>외주 계정이 운영/개인정보 원문/다운로드에 접근 가능</td>
 </tr>
 <tr>
+<td>A8</td>
+<td><code>A8-C09</code></td>
+<td>팀 채팅 참여자 표시 범위, 외부 초대 차단, 메시지/파일 로그, 첨부 다운로드 제한 검증</td>
+<td>권한 없는 사용자가 초대/조회/다운로드 가능</td>
+</tr>
+<tr>
 <td>A9</td>
 <td><code>A9-C01</code></td>
 <td>로그 무결성, 검색성, 보존정책 후보</td>
@@ -2325,6 +2455,12 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td><code>A9-C07</code></td>
 <td>외주 접속 방식은 공개 IP 직접 개방을 피하고 승인된 VPN/허용 IP/Zero Trust/임시 터널 후보로 관리</td>
 <td>개인별 계정, 만료일, 접속로그, 회수 이력 부재</td>
+</tr>
+<tr>
+<td>A9</td>
+<td><code>A9-C08</code></td>
+<td>팀 채팅 메시지/파일/참여자 감사로그의 검색성·무결성·보존정책 후보</td>
+<td><code>chat_room_id</code>, <code>message_id</code>, <code>attachment_id</code>로 조회 불가</td>
 </tr>
 </tbody>
 </table>
@@ -2422,6 +2558,10 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <td><code>AC-21</code></td>
 <td>외주 인력 외부 접속 보안 검토안에 공개 IP 직접 개방 비권고, 접속 방식 후보 비교, 개인별 계정, 만료일, MFA 후보, 메뉴별 로그, 다운로드 차단, 개인정보/운영 데이터 마스킹이 존재해야 한다.</td>
 </tr>
+<tr>
+<td><code>AC-22</code></td>
+<td>팀 채팅방 참여자 선택 표시 범위, 생성/참여자 추가/메시지 전송/파일 첨부 로그, 외부/권한 없는 초대 차단, 개인정보·민감정보 메시지와 파일 첨부 로그 기준이 존재해야 한다.</td>
+</tr>
 </tbody>
 </table>
 <p>인당 생산성/마진 기여: 명확한 인수조건으로 보안 검증을 자동화 후보로 만들고 반복 검토 시간을 줄인다.</p>
@@ -2437,7 +2577,7 @@ pre code { background: transparent; padding: 0; color: inherit; }
 <tbody>
 <tr>
 <td>1. 개인정보/임직원정보 접근 범위</td>
-<td>개인정보, 민감정보, 임직원 신상명세/인적사항, 입사등록 개인정보/임직원정보 처리범위, 외주 접속 데이터 조회/마스킹 범위, 거래처별 담당자 노출 필드, 담당 배정 변경 권한, 슈퍼바이저 드릴다운, 반출/마스킹 해제 범위</td>
+<td>개인정보, 민감정보, 임직원 신상명세/인적사항, 입사등록 개인정보/임직원정보 처리범위, 채팅 참여자 표시/메시지·파일 개인정보 처리 범위, 외주 접속 데이터 조회/마스킹 범위, 거래처별 담당자 노출 필드, 담당 배정 변경 권한, 슈퍼바이저 드릴다운, 반출/마스킹 해제 범위</td>
 <td>PM 승인 필요</td>
 </tr>
 <tr>
@@ -2447,7 +2587,7 @@ pre code { background: transparent; padding: 0; color: inherit; }
 </tr>
 <tr>
 <td>3. 외부연동/보안운영 기준</td>
-<td>택배사·전자문서·결제/온누리/베네카페 연동 범위, 외주 접속 방식과 대상 환경, 위탁/재위탁, 로그 저장·무결성·암호화·키 운영 방식, 결재 보류 상태 로그 운영 기준, 메뉴별 로그 보존/반출 권한</td>
+<td>택배사·전자문서·결제/온누리/베네카페 연동 범위, 외주 접속 방식과 대상 환경, 위탁/재위탁, 로그 저장·무결성·암호화·키 운영 방식, 결재 보류 상태 로그 운영 기준, 메뉴별/채팅 로그 보존·반출 권한</td>
 <td>PM 승인 필요</td>
 </tr>
 </tbody>

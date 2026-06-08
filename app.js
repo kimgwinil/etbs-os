@@ -22,6 +22,15 @@ function padId(prefix, index) {
   return `${prefix}-${String(index).padStart(3, "0")}`;
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function makeCustomer(index) {
   const prefix = companyPrefixes[index % companyPrefixes.length];
   const suffix = companySuffixes[Math.floor(index / companyPrefixes.length) % companySuffixes.length];
@@ -173,11 +182,39 @@ const aiMessages = [
   ["assistant", "동서바이오는 배송 지연과 예외 재처리 비율이 높습니다. 계약/원가 산식은 PM 승인 필요 상태입니다."]
 ];
 
-const teamMessages = [
-  ["정산팀 김서연", "한빛전자 정산 증적 4건 승인 대기입니다.", "AUD-CHAT-771"],
-  ["운영팀 박지훈", "배송 지연 건은 운송사 API 재처리 후 결과 남기겠습니다.", "AUD-CHAT-772"],
-  ["CS팀 이도윤", "첨부파일: 고객문의_마스킹본.xlsx", "AUD-FILE-128"]
+const chatMembers = [
+  { id: "EMP-001", name: "김서연", team: "정산팀", role: "정산 승인자" },
+  { id: "EMP-002", name: "박지훈", team: "운영팀", role: "운영 처리자" },
+  { id: "EMP-003", name: "이도윤", team: "CS팀", role: "개인정보 제한" },
+  { id: "EMP-004", name: "최민재", team: "상품팀", role: "상품 승인자" },
+  { id: "EMP-005", name: "김나은", team: "영업팀", role: "AM" },
+  { id: "EMP-006", name: "HR 관리자", team: "HR팀", role: "결재권한 관리자" }
 ];
+
+const currentChatUser = { id: "ME", name: "현재 사용자", team: "운영팀", role: "작성자" };
+
+const teamRooms = [
+  {
+    id: "ROOM-001",
+    type: "group",
+    title: "배송 지연 대응방",
+    participants: ["EMP-002", "EMP-003", "EMP-004"],
+    messages: [
+      ["운영팀 박지훈", "배송 지연 건은 운송사 API 재처리 후 결과 남기겠습니다.", "AUD-CHAT-772"],
+      ["CS팀 이도윤", "고객 문의 파일은 마스킹본만 공유하겠습니다.", "AUD-FILE-128"]
+    ]
+  },
+  {
+    id: "ROOM-002",
+    type: "dm",
+    title: "김서연",
+    participants: ["EMP-001"],
+    messages: [["정산팀 김서연", "한빛전자 정산 증적 4건 승인 대기입니다.", "AUD-CHAT-771"]]
+  }
+];
+
+let activeTeamRoomId = teamRooms[0].id;
+let selectedTeamMemberIds = ["EMP-001"];
 
 const auditRows = [
   ["AUD-10291", "개인정보 상세 열람", "CS팀 이도윤", "EMP-77***", "사유 입력 완료", "보존기간 PM 승인 필요"],
@@ -733,16 +770,19 @@ function saveSalesTargets() {
 
 function renderChats() {
   document.querySelector("#aiChat").innerHTML = aiMessages.map(renderMessage).join("");
-  document.querySelector("#teamChat").innerHTML = teamMessages
-    .map(([sender, message, audit]) => renderMessage(["assistant", `<b>${sender}</b><br>${message}<small>${audit}</small>`]))
-    .join("");
-  document.querySelector("#chatAuditFeed").innerHTML = teamMessages
+  renderTeamRooms();
+  renderTeamMembers();
+  renderTeamRoomMessages();
+  const activeRoom = getActiveTeamRoom();
+  document.querySelector("#chatAuditFeed").innerHTML = activeRoom.messages
+    .slice(-8)
+    .reverse()
     .map(
       ([sender, message, audit]) => `
         <div class="audit-item">
-          <strong>${audit}</strong>
-          <span>${sender}</span>
-          <p>${message}</p>
+          <strong>${escapeHtml(audit)}</strong>
+          <span>${escapeHtml(activeRoom.title)} · ${escapeHtml(sender)}</span>
+          <p>${escapeHtml(message)}</p>
         </div>
       `
     )
@@ -755,6 +795,120 @@ function renderChats() {
   ]
     .map(([title, text]) => `<div class="control-item"><strong>${title}</strong><p>${text}</p></div>`)
     .join("");
+}
+
+function getActiveTeamRoom() {
+  return teamRooms.find((room) => room.id === activeTeamRoomId) || teamRooms[0];
+}
+
+function getMemberLabel(memberId) {
+  const member = getChatMember(memberId);
+  return member ? `${member.team} ${member.name}` : memberId;
+}
+
+function getChatMember(memberId) {
+  if (memberId === currentChatUser.id) return currentChatUser;
+  return chatMembers.find((item) => item.id === memberId);
+}
+
+function getRoomMemberIds(room) {
+  return [currentChatUser.id, ...room.participants];
+}
+
+function renderTeamRooms() {
+  document.querySelector("#teamRoomCount").textContent = `${teamRooms.length}개`;
+  document.querySelector("#teamRoomList").innerHTML = teamRooms
+    .map((room) => {
+      const latest = room.messages[room.messages.length - 1];
+      return `
+        <button class="team-room-item ${room.id === activeTeamRoomId ? "active" : ""}" type="button" data-team-room="${room.id}">
+          <span>${room.type === "dm" ? "DM" : "단톡방"} · ${room.participants.length + 1}명</span>
+          <strong>${escapeHtml(room.title)}</strong>
+          <em>${latest ? escapeHtml(latest[1]) : "새 채팅방"}</em>
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function renderTeamMembers() {
+  document.querySelector("#teamMemberPicker").innerHTML = chatMembers
+    .map(
+      (member) => `
+        <label class="member-option ${selectedTeamMemberIds.includes(member.id) ? "active" : ""}">
+          <input type="checkbox" value="${member.id}" data-team-member="${member.id}" ${selectedTeamMemberIds.includes(member.id) ? "checked" : ""} />
+          <span>
+            <strong>${escapeHtml(member.team)} ${escapeHtml(member.name)}</strong>
+            <em>${escapeHtml(member.role)}</em>
+          </span>
+        </label>
+      `
+    )
+    .join("");
+  document.querySelector("#teamSelectedParticipants").innerHTML =
+    selectedTeamMemberIds.length === 0
+      ? "<span>참여자를 선택하면 DM 또는 단톡방을 생성할 수 있습니다.</span>"
+      : selectedTeamMemberIds
+          .map(getChatMember)
+          .filter(Boolean)
+          .map((member) => `<span class="participant-chip active">${escapeHtml(member.team)} ${escapeHtml(member.name)}</span>`)
+          .join("");
+}
+
+function renderTeamRoomMessages() {
+  const room = getActiveTeamRoom();
+  const memberIds = getRoomMemberIds(room);
+  document.querySelector("#activeTeamRoomBadge").textContent = room.type === "dm" ? "DM" : "단톡방";
+  document.querySelector("#activeTeamRoomTitle").textContent = room.title;
+  document.querySelector("#activeTeamRoomMeta").textContent = `${memberIds.length}명 참여 · 메시지 ${room.messages.length}건 · 전송/첨부 이력 감사로그 보존`;
+  document.querySelector("#activeTeamRoomParticipants").innerHTML = memberIds
+    .map(getChatMember)
+    .filter(Boolean)
+    .map((member) => `<span class="participant-chip">${escapeHtml(member.team)} ${escapeHtml(member.name)}</span>`)
+    .join("");
+  document.querySelector("#teamChat").innerHTML = room.messages
+    .map(([sender, message, audit]) =>
+      renderMessage([
+        sender.includes("현재 사용자") ? "user" : "assistant",
+        `<b>${escapeHtml(sender)}</b><br>${escapeHtml(message)}<small>${escapeHtml(audit)}</small>`
+      ])
+    )
+    .join("");
+}
+
+function getSelectedChatMembers() {
+  return selectedTeamMemberIds;
+}
+
+function createTeamRoom(type) {
+  const selected = getSelectedChatMembers();
+  if (type === "dm" && selected.length !== 1) {
+    showToast("개인방은 팀원 1명을 선택해야 합니다.");
+    return;
+  }
+  if (type === "group" && selected.length < 2) {
+    showToast("단톡방은 팀원 2명 이상을 선택해야 합니다.");
+    return;
+  }
+  const title =
+    type === "dm"
+      ? chatMembers.find((member) => member.id === selected[0]).name
+      : selected.map((memberId) => chatMembers.find((member) => member.id === memberId).name).join(", ");
+  const auditId = `AUD-ROOM-${Date.now().toString().slice(-6)}`;
+  const room = {
+    id: `ROOM-${String(teamRooms.length + 1).padStart(3, "0")}`,
+    type,
+    title,
+    participants: [...selected],
+    messages: [["현재 사용자", `${type === "dm" ? "개인방" : "단톡방"}을 생성했습니다.`, auditId]]
+  };
+  teamRooms.unshift(room);
+  activeTeamRoomId = room.id;
+  auditRows.unshift([auditId, "채팅방 생성", "현재 사용자", room.title, "저장 완료", `${type === "dm" ? "DM" : "단톡방"} 참여자 ${selected.length + 1}명`]);
+  auditRows.splice(20);
+  renderChats();
+  renderAudit();
+  showToast(`${room.title} 채팅방을 생성하고 로그를 기록했습니다.`);
 }
 
 function renderMessage([role, message]) {
@@ -1131,6 +1285,18 @@ function saveEmployee(values) {
   renderEmployees();
 }
 
+function openTeamAttachment() {
+  const room = getActiveTeamRoom();
+  const auditId = `AUD-FILE-${Date.now().toString().slice(-6)}`;
+  room.messages.push(["현재 사용자", "파일 첨부 진입: 마스킹, 다운로드 권한, 보존기간 확인 후 업로드합니다.", auditId]);
+  auditRows.unshift([auditId, "채팅 파일 첨부 진입", "현재 사용자", room.title, "진입 기록", "마스킹/다운로드 권한/보존기간 안내"]);
+  auditRows.splice(20);
+  renderChats();
+  renderAudit();
+  openCommandPanel("attach", `${room.title} 파일 첨부`);
+  showToast(`${room.title} 파일 첨부 진입 로그를 기록했습니다.`);
+}
+
 document.addEventListener("click", (event) => {
   const navItem = event.target.closest(".nav-item");
   if (navItem) showView(navItem.dataset.view);
@@ -1143,10 +1309,19 @@ document.addEventListener("click", (event) => {
   }
 
   if (event.target.closest("#refreshButton")) showToast("ETBS OS 화면 데이터를 새로고침했습니다.");
-  if (event.target.closest("#attachButton")) openCommandPanel("attach", "직원 채팅방 첨부파일");
+  if (event.target.closest("#attachButton")) openTeamAttachment();
+  if (event.target.closest("#createDmButton")) createTeamRoom("dm");
+  if (event.target.closest("#createGroupButton")) createTeamRoom("group");
   if (event.target.closest("#saveSalesTargets")) saveSalesTargets();
   if (event.target.closest("#saveProductInventory")) saveProductInventory();
   if (event.target.closest("#saveFinanceInputs")) saveFinanceInputs();
+
+  const teamRoomButton = event.target.closest("[data-team-room]");
+  if (teamRoomButton) {
+    activeTeamRoomId = teamRoomButton.dataset.teamRoom;
+    renderChats();
+    showToast(`${getActiveTeamRoom().title} 채팅방으로 전환했습니다.`);
+  }
 
   const auditFilterButton = event.target.closest("[data-audit-filter]");
   if (auditFilterButton) {
@@ -1194,6 +1369,13 @@ document.addEventListener("click", (event) => {
   if (event.target.classList.contains("chat-backdrop")) closeAllChatPopups();
 });
 
+document.addEventListener("change", (event) => {
+  const memberInput = event.target.closest("[data-team-member]");
+  if (!memberInput) return;
+  selectedTeamMemberIds = Array.from(document.querySelectorAll("[data-team-member]:checked")).map((input) => input.dataset.teamMember);
+  renderTeamMembers();
+});
+
 function openChatPopup(type) {
   closeAllChatPopups();
   document.querySelector("#chatBackdrop").classList.add("active");
@@ -1225,10 +1407,15 @@ document.querySelector("#aiSend").addEventListener("click", () => {
 document.querySelector("#teamSend").addEventListener("click", () => {
   const input = document.querySelector("#teamMessage");
   if (!input.value.trim()) return;
-  teamMessages.push(["운영팀", input.value.trim(), `AUD-CHAT-${780 + teamMessages.length}`]);
+  const room = getActiveTeamRoom();
+  const auditId = `AUD-CHAT-${Date.now().toString().slice(-6)}`;
+  room.messages.push(["현재 사용자", input.value.trim(), auditId]);
+  auditRows.unshift([auditId, "채팅 메시지 전송", "현재 사용자", room.title, "전송 완료", "채팅 로그 보존"]);
+  auditRows.splice(20);
   input.value = "";
   renderChats();
-  showToast("직원 채팅 로그를 기록했습니다.");
+  renderAudit();
+  showToast(`${room.title} 메시지를 전송하고 채팅 로그를 기록했습니다.`);
 });
 
 renderNav();

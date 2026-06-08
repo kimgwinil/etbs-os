@@ -1060,7 +1060,7 @@ input {
   right: 88px;
   bottom: 18px;
   z-index: 31;
-  width: min(920px, calc(100vw - 116px));
+  width: min(1100px, calc(100vw - 116px));
   height: min(720px, calc(100vh - 48px));
   display: none;
   grid-template-rows: auto 1fr auto;
@@ -1121,6 +1121,177 @@ input {
 .assistant-side .control-list,
 .assistant-side .audit-feed {
   padding: 14px 0 0;
+}
+
+.team-chat-layout {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 260px;
+  background: #f8faf9;
+}
+
+.team-room-panel {
+  min-height: 0;
+  overflow: auto;
+  border-right: 1px solid var(--line);
+  background: #ffffff;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 12px;
+}
+
+.team-sidebar-section {
+  display: grid;
+  gap: 10px;
+}
+
+.team-sidebar-section + .team-sidebar-section {
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.section-mini-header,
+.team-room-actions,
+.participant-summary,
+.participant-chip-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.section-mini-header {
+  justify-content: space-between;
+}
+
+.section-mini-header span,
+.participant-summary {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.team-room-actions button {
+  flex: 1;
+}
+
+.team-room-list {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.team-room-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 10px;
+  text-align: left;
+  display: grid;
+  gap: 5px;
+}
+
+.team-room-item.active,
+.team-room-item:hover {
+  border-color: var(--teal);
+  background: #eef6f5;
+}
+
+.team-room-item span,
+.team-room-item em,
+.active-room-meta p,
+.member-option em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.team-room-item em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-chat-main {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.active-room-meta {
+  min-height: 74px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+}
+
+.active-room-meta h3 {
+  margin-top: 6px;
+}
+
+.active-room-meta p {
+  margin-top: 4px;
+}
+
+.team-member-side {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.member-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.member-option {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+  padding: 9px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.member-option.active {
+  border-color: #9dccd0;
+  background: #eef6f5;
+}
+
+.member-option input {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+}
+
+.member-option strong,
+.member-option em {
+  display: block;
+}
+
+.participant-chip {
+  border: 1px solid #d7e2e4;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.participant-chip.active {
+  border-color: #9dccd0;
+  background: #eef6f5;
+  color: var(--teal);
 }
 
 .chat-popup .composer {
@@ -1557,8 +1728,23 @@ input {
     grid-template-columns: 1fr;
   }
 
+  .team-chat-layout {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .team-room-panel,
+  .team-chat-main,
+  .team-member-side {
+    min-height: 260px;
+  }
+
   .assistant-side {
     display: none;
+  }
+
+  .team-member-side {
+    display: grid;
   }
 }
 
