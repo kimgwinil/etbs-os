@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ETBS OS</title>
-    <link rel="stylesheet" href="./styles.css?v=20260608-profit-approval" />
+    <link rel="stylesheet" href="./styles.css?v=20260608-hr-leave" />
   </head>
   <body>
     <div class="app-shell">
@@ -243,6 +243,17 @@
               <div class="data-table" id="employeeTable"></div>
             </section>
             <section class="panel detail" id="employeeDetail"></section>
+            <section class="panel detail settings-wide">
+              <div class="panel-header">
+                <div>
+                  <h2>임직원 신상명세/근태·연차 관리</h2>
+                  <p>50명 더미 임직원 기준으로 개인정보 마스킹, 재직상태, 연차 자동계산과 신청 흐름을 테스트합니다.</p>
+                </div>
+              </div>
+              <div class="hr-summary" id="hrLeaveSummary"></div>
+              <div class="data-table hr-table" id="hrLeaveTable"></div>
+            </section>
+            <section class="panel detail" id="hrLeaveDetail"></section>
             <section class="panel detail">
               <div class="panel-header compact">
                 <div>
@@ -387,6 +398,6 @@
     </section>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=20260608-profit-approval"></script>
+    <script src="./app.js?v=20260608-hr-leave"></script>
   </body>
 </html>

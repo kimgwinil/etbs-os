@@ -14,11 +14,13 @@ const productCategories = ["복지 포인트", "온누리 모바일권", "건강
 const suppliers = ["복지포인트", "온누리 API", "케어파트너", "그린문고", "모두복지몰", "트래블웰", "러닝허브", "푸드링크", "컬처넷", "메디서포트"];
 const teams = ["정산팀", "운영팀", "CS팀", "상품팀", "영업팀", "HR팀", "보안팀"];
 const roles = ["정산 승인자", "운영 처리자", "개인정보 제한", "상품 승인자", "AM", "결재권한 관리자", "접근로그 감사자"];
+const positions = ["사원", "주임", "대리", "과장", "차장", "부장", "팀장"];
 const familyNames = ["김", "박", "이", "최", "정", "강", "조", "윤", "장", "임"];
 const givenNames = ["서연", "지훈", "도윤", "민재", "하린", "나은", "윤서", "도현", "서진", "지우"];
 const statuses = ["정상", "주의", "개선"];
 const contracts = ["운영중", "갱신 30일 전", "갱신 74일 전", "계약 검토", "신규 온보딩", "조건 재협상"];
 const MAX_TEAM_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+const TODAY = new Date("2026-06-08T00:00:00+09:00");
 
 function padId(prefix, index) {
   return `${prefix}-${String(index).padStart(3, "0")}`;
@@ -83,9 +85,9 @@ function makeEmployee(index) {
   const customer = customers[index % customers.length];
   const team = teams[index % teams.length];
   const name = `${familyNames[index % familyNames.length]}${givenNames[index % givenNames.length]}`;
-  const employmentStatus = index % 17 === 0 ? "퇴사예정" : index % 13 === 0 ? "입사예정" : "재직";
-  const date = `202${index % 6}-${String((index % 12) + 1).padStart(2, "0")}-${String((index % 27) + 1).padStart(2, "0")}`;
-  const securityState = employmentStatus === "퇴사예정" ? "권한 회수 예약" : index % 9 === 0 ? "열람 사유 필요" : "정상";
+  const employmentStatus = index % 19 === 0 ? "퇴사" : index % 13 === 0 ? "휴직" : index % 11 === 0 ? "병가" : "재직";
+  const date = `20${String(8 + (index % 18)).padStart(2, "0")}-${String((index % 12) + 1).padStart(2, "0")}-${String((index % 27) + 1).padStart(2, "0")}`;
+  const securityState = employmentStatus === "퇴사" ? "권한 회수 완료" : index % 9 === 0 ? "열람 사유 필요" : "정상";
   return [
     padId("EMP", index + 1),
     name,
@@ -101,6 +103,24 @@ function makeEmployee(index) {
 const customers = Array.from({ length: 100 }, (_, index) => makeCustomer(index));
 const products = Array.from({ length: 100 }, (_, index) => makeProduct(index));
 const employees = Array.from({ length: 50 }, (_, index) => makeEmployee(index));
+const employeeRanks = ["사원", "주임", "대리", "과장", "차장", "부장", "이사"];
+const employeeProfiles = employees.map((employee, index) => {
+  const birthYear = 1978 + (index % 22);
+  const birthDate = `${birthYear}-${String((index % 12) + 1).padStart(2, "0")}-${String((index % 27) + 1).padStart(2, "0")}`;
+  const terminationDate = employee[4] === "퇴사" ? `2026-${String(((index + 5) % 12) + 1).padStart(2, "0")}-${String(((index + 13) % 27) + 1).padStart(2, "0")}` : "";
+  return {
+    id: employee[0],
+    rank: employeeRanks[index % employeeRanks.length],
+    birthDate,
+    maskedBirthDate: `${birthDate.slice(0, 4)}-**-**`,
+    hireDate: employee[5],
+    terminationDate,
+    leaveUsed: employee[4] === "퇴사" ? 0 : index % 9,
+    leavePending: employee[4] === "재직" ? index % 3 : 0
+  };
+});
+const hrLeaveUsage = Object.fromEntries(employees.map((employee, index) => [employee[0], index % 9]));
+const hrLeaveRequests = [];
 
 const currentProfitCostUser = { name: "김권일", role: "Master" };
 const profitCostSettings = {
@@ -273,6 +293,7 @@ const auditRows = [
 const toast = document.querySelector("#toast");
 let auditFilter = "all";
 let activeSettingsIndex = 0;
+let activeHrEmployeeId = employees[0][0];
 
 const approvalLines = [
   ["정산 승인", "정산팀 김서연", "재무리더", "승인/반려/보류"],
@@ -379,6 +400,21 @@ const settingsHub = [
     toggles: ["상신자 자동 지정", "반려/보류 사유 필수", "현재/다음/최종 결재자 표시"],
     permissions: ["결재권한 관리자", "HR 관리자"],
     audit: "결재라인 설정, 승인, 반려, 보류, 입사등록 활성화 대기는 감사로그에 남습니다."
+  },
+  {
+    menu: "임직원 신상명세/근태·연차",
+    scope: "임직원 신상명세, 재직상태, 입퇴사, 휴직/병가, 연차 자동계산과 신청/잔여관리",
+    owner: "HR 관리자 · Master",
+    controls: ["신상명세 마스킹", "재직상태 코드", "입사연도 기준 연차 자동계산", "연차 신청 승인 상태"],
+    badge: "HR/Leave",
+    fields: [
+      ["연차 산정 기준", "select", "입사일 기준", "근로기준법 제60조 가정"],
+      ["1년 미만 기준", "select", "1개월 개근 1일", "최대 11일"],
+      ["장기근속 가산", "select", "3년 이상 2년마다 +1일", "최대 25일"]
+    ],
+    toggles: ["신상명세 기본 마스킹", "퇴사자 권한 회수", "연차 신청 감사로그"],
+    permissions: ["HR 관리자", "Master"],
+    audit: "신상명세 조회, 재직상태 변경, 연차 신청/승인/잔여 변경은 감사로그와 접근로그에 남습니다."
   },
   {
     menu: "로그기록",
@@ -1191,29 +1227,251 @@ function renderMessage([role, message]) {
 }
 
 function renderEmployees() {
-  renderDataTable("#employeeTable", ["직원 ID", "이름", "고객사", "조직", "상태", "입사/퇴사일", "결재권한", "보안 상태"], employees);
+  const employeeRows = employees.map((employee) => {
+    const record = getHrEmployeeRecord(employee);
+    return [
+      employee[0],
+      employee[1],
+      record.position,
+      record.maskedBirthDate,
+      employee[2],
+      employee[3],
+      record.employmentState,
+      record.hireDate,
+      record.resignDate,
+      `${record.remainingLeave}일`
+    ];
+  });
+  renderDataTable("#employeeTable", ["직원 ID", "이름", "직급", "생년월일", "고객사", "조직", "재직상태", "입사일", "퇴사일", "잔여연차"], employeeRows);
   renderEmployeeDetail(employees[0][0]);
+  renderHrLeaveManagement();
 }
 
 function renderEmployeeDetail(employeeId) {
   const employee = employees.find((item) => item[0] === employeeId) || employees[0];
+  const record = getHrEmployeeRecord(employee);
   document.querySelector("#employeeDetail").innerHTML = `
     <div class="detail-header">
       <span class="status-pill">PII Protected</span>
       <h2>${employee[1]}</h2>
-      <p>${employee[0]} · ${employee[2]} · ${employee[3]}</p>
+      <p>${employee[0]} · ${employee[2]} · ${employee[3]} · ${record.position}</p>
     </div>
     <div class="detail-grid">
-      <div><span>신상명세</span><strong>마스킹 표시</strong></div>
-      <div><span>인적사항</span><strong>상세 열람 사유 필요</strong></div>
-      <div><span>입사/퇴사</span><strong>${employee[5]}</strong></div>
-      <div><span>재직 상태</span><strong>${employee[4]}</strong></div>
+      <div><span>신상명세</span><strong>${record.maskedName}</strong></div>
+      <div><span>생년월일</span><strong>${record.maskedBirthDate}</strong></div>
+      <div><span>입사일</span><strong>${record.hireDate}</strong></div>
+      <div><span>퇴사일</span><strong>${record.resignDate}</strong></div>
+      <div><span>재직 상태</span><strong>${record.employmentState}</strong></div>
       <div><span>결재권한</span><strong>${employee[6]}</strong></div>
       <div><span>권한 회수</span><strong>${employee[7]}</strong></div>
+      <div><span>자동연차</span><strong>${record.annualLeave}일</strong></div>
+      <div><span>사용/잔여</span><strong>${record.usedLeave}일 / ${record.remainingLeave}일</strong></div>
       <div><span>감사로그</span><strong>AUD-HR-${employee[0].split("-")[1]}</strong></div>
     </div>
     <div class="notice">신상명세 및 민감정보 항목, 보존기간, 퇴사자 데이터 처리범위는 PM 승인 필요입니다.</div>
   `;
+}
+
+function getEmployeeIndex(employee) {
+  return Math.max(0, Number(String(employee[0]).split("-")[1]) - 1);
+}
+
+function getHrEmployeeRecord(employee) {
+  const index = getEmployeeIndex(employee);
+  const profile = employeeProfiles.find((item) => item.id === employee[0]);
+  const hireDate = employee[5];
+  const employmentState = employee[4];
+  const resignDate = profile?.terminationDate || "-";
+  const birthDate = profile?.birthDate || `19${String(76 + (index % 22)).padStart(2, "0")}-${String((index % 12) + 1).padStart(2, "0")}-${String((index % 27) + 1).padStart(2, "0")}`;
+  const annualLeave = calculateAnnualLeave(hireDate, employmentState);
+  const usedLeave = Math.min(annualLeave, hrLeaveUsage[employee[0]] ?? profile?.leaveUsed ?? 0);
+  const pendingLeave = employmentState === "재직" ? profile?.leavePending || 0 : 0;
+  return {
+    id: employee[0],
+    name: employee[1],
+    maskedName: maskName(employee[1]),
+    customer: employee[2],
+    team: employee[3],
+    position: profile?.rank || positions[index % positions.length],
+    birthDate,
+    maskedBirthDate: maskBirthDate(birthDate),
+    hireDate,
+    resignDate,
+    employmentState,
+    annualLeave,
+    usedLeave,
+    pendingLeave,
+    remainingLeave: Math.max(0, annualLeave - usedLeave - pendingLeave)
+  };
+}
+
+function calculateAnnualLeave(hireDate, employmentState) {
+  if (["퇴사", "휴직", "병가"].includes(employmentState)) return 0;
+  const start = new Date(`${hireDate}T00:00:00+09:00`);
+  const months = Math.max(0, (TODAY.getFullYear() - start.getFullYear()) * 12 + TODAY.getMonth() - start.getMonth());
+  if (months < 12) return Math.min(11, months);
+  const years = Math.floor(months / 12);
+  return Math.min(25, 15 + Math.floor((years - 1) / 2));
+}
+
+function maskName(name) {
+  return name.length < 2 ? `${name}*` : `${name[0]}*${name.slice(2)}`;
+}
+
+function maskBirthDate(birthDate) {
+  return birthDate.replace(/(\d{4})-(\d{2})-(\d{2})/, "$1-**-**");
+}
+
+function getHrEmployeeRecords() {
+  return employees.map(getHrEmployeeRecord);
+}
+
+function renderHrLeaveManagement() {
+  const records = getHrEmployeeRecords();
+  const active = records.find((record) => record.id === activeHrEmployeeId) || records[0];
+  activeHrEmployeeId = active.id;
+  const summary = [
+    ["테스트 임직원", `${records.length}명`, "더미 데이터 전체"],
+    ["재직", `${records.filter((record) => record.employmentState === "재직").length}명`, "연차 자동계산 대상"],
+    ["휴직/병가", `${records.filter((record) => ["휴직", "병가"].includes(record.employmentState)).length}명`, "연차 사용 제한 안내"],
+    ["잔여연차 합계", `${records.reduce((sum, record) => sum + record.remainingLeave, 0)}일`, "문의 대응 기준"]
+  ];
+  document.querySelector("#hrLeaveSummary").innerHTML = summary
+    .map(
+      ([label, value, help]) => `
+        <div class="hr-summary-card">
+          <span>${label}</span>
+          <strong>${value}</strong>
+          <em>${help}</em>
+        </div>
+      `
+    )
+    .join("");
+  document.querySelector("#hrLeaveTable").innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>직원 ID</th>
+          <th>이름</th>
+          <th>직급</th>
+          <th>생년월일</th>
+          <th>입사일</th>
+          <th>퇴사일</th>
+          <th>재직상태</th>
+          <th>자동연차</th>
+          <th>사용/잔여</th>
+          <th>연차 신청</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${records
+          .map(
+            (record) => `
+              <tr class="${record.id === active.id ? "selected-row" : ""}" data-hr-employee="${record.id}">
+                <td>${record.id}</td>
+                <td>${record.maskedName}</td>
+                <td>${record.position}</td>
+                <td>${record.maskedBirthDate}</td>
+                <td>${record.hireDate}</td>
+                <td>${record.resignDate}</td>
+                <td><span class="status-pill ${record.employmentState === "재직" ? "active" : ""}">${record.employmentState}</span></td>
+                <td>${record.annualLeave}일</td>
+                <td>${record.usedLeave}일 / ${record.remainingLeave}일</td>
+                <td><button class="secondary-button compact-button" type="button" data-leave-request="${record.id}">연차 신청</button></td>
+              </tr>
+            `
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+  renderHrLeaveDetail(active.id);
+}
+
+function renderHrLeaveDetail(employeeId) {
+  const record = getHrEmployeeRecords().find((item) => item.id === employeeId) || getHrEmployeeRecords()[0];
+  activeHrEmployeeId = record.id;
+  const recentRequests = hrLeaveRequests.filter((request) => request.employeeId === record.id).slice(-3);
+  document.querySelector("#hrLeaveDetail").innerHTML = `
+    <div class="detail-header">
+      <span class="status-pill">PII Masked</span>
+      <h2>${record.maskedName}</h2>
+      <p>${record.id} · ${record.team} · ${record.position}</p>
+    </div>
+    <div class="detail-grid">
+      <div><span>이름</span><strong>${record.maskedName}</strong></div>
+      <div><span>생년월일</span><strong>${record.maskedBirthDate}</strong></div>
+      <div><span>입사일</span><strong>${record.hireDate}</strong></div>
+      <div><span>퇴사일</span><strong>${record.resignDate}</strong></div>
+      <div><span>재직상태</span><strong>${record.employmentState}</strong></div>
+      <div><span>연차 자동계산</span><strong>${record.annualLeave}일</strong></div>
+      <div><span>사용 연차</span><strong>${record.usedLeave}일</strong></div>
+      <div><span>승인대기</span><strong>${record.pendingLeave}일</strong></div>
+      <div><span>잔여 연차</span><strong>${record.remainingLeave}일</strong></div>
+    </div>
+    <div class="approval-actions">
+      <button class="primary-button" type="button" data-leave-request="${record.id}">연차 신청</button>
+    </div>
+    <div class="notice">신상명세 원문과 생년월일 전체값은 권한과 열람 사유가 있어야 확인 가능합니다. 연차 계산식과 휴직/병가 처리 기준은 PM 승인 필요입니다.</div>
+    <div class="hr-request-list">
+      ${recentRequests.length ? recentRequests.map(renderLeaveRequestItem).join("") : "<span>최근 연차 신청 없음</span>"}
+    </div>
+  `;
+}
+
+function renderLeaveRequestItem(request) {
+  const actionButtons =
+    request.status === "승인대기"
+      ? `
+        <span class="hr-request-actions">
+          <button class="secondary-button compact-button" type="button" data-leave-decision="승인완료" data-leave-request-id="${request.id}">승인</button>
+          <button class="secondary-button compact-button" type="button" data-leave-decision="반려" data-leave-request-id="${request.id}">반려</button>
+        </span>
+      `
+      : "";
+  return `
+    <span class="hr-request-item">
+      <span>${request.auditId} · ${request.days}일 신청 · ${request.status}</span>
+      ${actionButtons}
+    </span>
+  `;
+}
+
+function requestAnnualLeave(employeeId) {
+  const record = getHrEmployeeRecords().find((item) => item.id === employeeId);
+  if (!record) return;
+  if (record.remainingLeave <= 0 || record.employmentState !== "재직") {
+    showToast("재직 상태와 잔여연차가 있어야 연차를 신청할 수 있습니다.");
+    return;
+  }
+  const auditId = `AUD-LEAVE-${Date.now().toString().slice(-6)}`;
+  const profile = employeeProfiles.find((item) => item.id === record.id);
+  if (profile) profile.leavePending += 1;
+  hrLeaveRequests.push({ id: `LR-${String(hrLeaveRequests.length + 1).padStart(3, "0")}`, employeeId: record.id, days: 1, status: "승인대기", auditId });
+  auditRows.unshift([auditId, "연차 신청", currentProfitCostUser.name, record.id, "승인대기", "개인정보 마스킹 · 승인대기 연차 반영"]);
+  auditRows.splice(20);
+  activeHrEmployeeId = record.id;
+  renderHrLeaveManagement();
+  renderAudit();
+  showToast(`${record.maskedName} 연차 1일 신청을 승인대기로 기록했습니다.`);
+}
+
+function decideAnnualLeaveRequest(requestId, nextStatus) {
+  const request = hrLeaveRequests.find((item) => item.id === requestId);
+  if (!request || request.status !== "승인대기") return;
+  const employee = employees.find((item) => item[0] === request.employeeId);
+  const profile = employeeProfiles.find((item) => item.id === request.employeeId);
+  if (profile) profile.leavePending = Math.max(0, profile.leavePending - request.days);
+  if (nextStatus === "승인완료") hrLeaveUsage[request.employeeId] = (hrLeaveUsage[request.employeeId] || 0) + request.days;
+  request.status = nextStatus;
+  const record = employee ? getHrEmployeeRecord(employee) : null;
+  const auditId = `AUD-LEAVE-${Date.now().toString().slice(-6)}`;
+  auditRows.unshift([auditId, "연차 결재", currentProfitCostUser.name, request.employeeId, nextStatus, `${request.id} · ${request.days}일 · 잔여연차 재계산`]);
+  auditRows.splice(20);
+  activeHrEmployeeId = request.employeeId;
+  renderHrLeaveManagement();
+  renderAudit();
+  showToast(`${record?.maskedName || request.employeeId} 연차 신청을 ${nextStatus} 처리했습니다.`);
 }
 
 function renderAudit() {
@@ -1675,6 +1933,8 @@ function saveEmployee(values) {
   ]);
   renderDashboard();
   renderEmployees();
+  activeHrEmployeeId = employees[0][0];
+  renderHrLeaveManagement();
 }
 
 function handleTeamAttachment(files) {
@@ -1748,6 +2008,37 @@ document.addEventListener("click", (event) => {
 
   const approvalAction = event.target.closest("[data-approval-action]");
   if (approvalAction) processApprovalDocument(approvalAction.dataset.approvalId, approvalAction.dataset.approvalAction);
+
+  const leaveRequestButton = event.target.closest("[data-leave-request]");
+  if (leaveRequestButton) {
+    requestAnnualLeave(leaveRequestButton.dataset.leaveRequest);
+    return;
+  }
+
+  const leaveDecisionButton = event.target.closest("[data-leave-decision]");
+  if (leaveDecisionButton) {
+    decideAnnualLeaveRequest(leaveDecisionButton.dataset.leaveRequestId, leaveDecisionButton.dataset.leaveDecision);
+    return;
+  }
+
+  const hrEmployeeRow = event.target.closest("[data-hr-employee]");
+  if (hrEmployeeRow && !event.target.closest("[data-leave-request]")) {
+    activeHrEmployeeId = hrEmployeeRow.dataset.hrEmployee;
+    renderHrLeaveManagement();
+    renderEmployeeDetail(activeHrEmployeeId);
+    showToast(`${activeHrEmployeeId} 임직원 상세와 연차 현황을 열었습니다.`);
+    return;
+  }
+
+  const employeeTableRow = event.target.closest("#employeeTable [data-command='employeeRow']");
+  if (employeeTableRow) {
+    const employeeId = employeeTableRow.dataset.commandLabel;
+    activeHrEmployeeId = employeeId;
+    renderEmployeeDetail(employeeId);
+    renderHrLeaveManagement();
+    showToast(`${employeeId} 임직원 상세와 연차 현황을 열었습니다.`);
+    return;
+  }
 
   const memberOption = event.target.closest("[data-team-member-option]");
   if (memberOption && !event.target.closest("[data-team-member]")) {
@@ -1889,6 +2180,7 @@ renderLogistics();
 renderPipeline();
 renderChats();
 renderEmployees();
+renderHrLeaveManagement();
 renderApprovalLines();
 renderApprovalManagement();
 renderSettingsHub();
