@@ -51,7 +51,7 @@ PM이 전달한 전체 업무 프로세스 요구사항이 어떤 문서와 담�
 | R31 | 거래처에 담당자를 배정하고 거래처 화면에서 담당자가 보여야 함 | `/specs/employee/customer-assignment.md` | A2, A3, A4, A8 | 보강 필요 | 거래처 상세/목록 담당자 표시와 배정 이력 보강 |
 | R32 | 승인/반려/보류 버튼이 무엇을 처리하는지 명확해야 함 | `/specs/workflow/approval-action-semantics.md`, `/specs/workflow/approval-line.md` | A2, A3, A7, A8 | 보강 필요 | 버튼별 대상, 결과 상태, 로그, 후속 업무 영향 정의 |
 | R33 | 결재 버튼을 누르면 결재 상태를 즉각 확인할 수 있어야 함 | `/specs/workflow/approval-action-semantics.md` | A2, A3, A7, A8 | 보강 필요 | 결재 상태 패널/타임라인/토스트/목록 상태 표시 보강 |
-| R34 | 각 메뉴 오른쪽 상단의 개별 설정 버튼은 제거하고 상단 메인 설정 메뉴만 유지 | `/specs/frontend/role-menu-user-context.md` | A3, A8 | 보강 필요 | 메뉴별 중복 설정 버튼 제거, 전역 설정 메뉴 단일화, QA 반려 기준 추가 |
+| R34 | 각 메뉴 오른쪽 상단의 개별 설정 버튼은 제거하고 상단 메인 설정 메뉴만 유지 | `/specs/frontend/role-menu-user-context.md`, `/index.html`, `/app.js`, `/styles.css` | A3, A8 | 반영 | 설정 진입점 단일화, 설정 허브 통합, QA 반려 기준 추가 |
 | R35 | 입사등록의 승인상태는 실제 결재라인을 통해 승인되어야 함 | `/specs/hr/employee-onboarding-approval.md`, `/specs/workflow/approval-line.md` | A2, A3, A7, A8 | 보강 필요 | 입사등록 상신, 결재라인 설정, 최종 승인 전 입사 확정 금지 |
 | R36 | 입사등록 결재라인 설정이 가능해야 함 | `/specs/hr/employee-onboarding-approval.md` | A2, A3, A7, A8 | 보강 필요 | 입사등록 유형의 결재자 추가/순서변경/최종결재권자 지정 |
 | R37 | 설정 메뉴에 메뉴별 로그기록을 남기고 확인 가능해야 함 | `/specs/audit/menu-log-records.md`, `/specs/audit/timelog-auditlog.md` | A3, A7, A8, A9 | 보강 필요 | 메뉴별 조회/생성/수정/삭제/결재/반출 로그와 설정 내 조회 화면 |

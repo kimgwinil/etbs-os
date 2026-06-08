@@ -197,6 +197,16 @@ const approvalLines = [
   ["결재권한 변경", "HR 관리자", "보안책임자", "승인/반려/보류"]
 ];
 
+const settingsHub = [
+  ["대시보드/재무", "제품원가, 판매관리비, 일반관리비 입력 권한과 영업이익 산식 버전 관리", "Master · ProfitCostInputManager"],
+  ["고객관리", "신규/수정 저장 정책, 거래처 담당자 배정, 담당자 다중 선택 기준", "관리자"],
+  ["판매상품", "판매가격 표시, 상품 승인 요청, 가격/수수료 변경 승인 기준", "상품 승인자"],
+  ["배송/입출고", "택배사 연동, 배송 위치 조회, 입고/출고 상태 코드와 예외 처리", "운영 처리자"],
+  ["영업 파이프라인", "견적 발행, 계약 전환, 주문 등록, 매출인식 상태 전이 기준", "영업 관리자"],
+  ["결재/입사등록", "로그인 사용자 자동 상신, 결재라인 지정, 승인/반려/보류 상태 처리", "결재권한 관리자"],
+  ["로그기록", "메뉴 진입, 조회, 생성, 수정, 결재, 반출 로그 조회와 보존 정책", "접근로그 감사자"]
+];
+
 const commandTemplates = {
   "customer-create": ["고객 등록", "신규 고객사 등록 폼을 열었습니다.", "고객사명, 담당자, 계약 상태 입력 후 승인 요청으로 전환됩니다."],
   "product-approval": ["상품 승인 요청", "선택 가능한 판매상품 승인 요청 큐를 생성했습니다.", "가격/수수료/공급사 변경은 감사로그와 PM 승인 필요 상태로 기록됩니다."],
@@ -693,6 +703,20 @@ function renderApprovalLines() {
   renderDataTable("#approvalLineTable", ["결재 유형", "요청자", "승인자", "처리 메뉴"], approvalLines);
 }
 
+function renderSettingsHub() {
+  document.querySelector("#settingsHub").innerHTML = settingsHub
+    .map(
+      ([menu, scope, owner]) => `
+        <div class="settings-hub-item">
+          <strong>${menu}</strong>
+          <p>${scope}</p>
+          <span>${owner}</span>
+        </div>
+      `
+    )
+    .join("");
+}
+
 function renderDataTable(selector, headers, rows) {
   const commandByTable = {
     "#productTable": "productRow",
@@ -907,7 +931,6 @@ document.addEventListener("click", (event) => {
     renderCustomerDetail(customerRow.dataset.customer);
   }
 
-  if (event.target.closest("#settingsButton")) showView("settings");
   if (event.target.closest("#refreshButton")) showToast("ETBS OS 화면 데이터를 새로고침했습니다.");
   if (event.target.closest("#attachButton")) openCommandPanel("attach", "직원 채팅방 첨부파일");
   if (event.target.closest("#saveSalesTargets")) saveSalesTargets();
@@ -986,4 +1009,5 @@ renderPipeline();
 renderChats();
 renderEmployees();
 renderApprovalLines();
+renderSettingsHub();
 renderAudit();
