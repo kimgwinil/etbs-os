@@ -681,6 +681,13 @@ function formatWon(value) {
   return `${Math.round(Number(value) || 0).toLocaleString("ko-KR")}원`;
 }
 
+function formatFileSize(bytes) {
+  if (!bytes) return "0B";
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024).toLocaleString("ko-KR")}KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+}
+
 function parseWon(value) {
   return Number(String(value).replace(/[^\d]/g, "")) || 0;
 }
@@ -1343,15 +1350,20 @@ function saveEmployee(values) {
 }
 
 function openTeamAttachment() {
+  document.querySelector("#teamAttachmentInput").click();
+}
+
+function handleTeamAttachment(file) {
+  if (!file) return;
   const room = getActiveTeamRoom();
   const auditId = `AUD-FILE-${Date.now().toString().slice(-6)}`;
-  room.messages.push([getCurrentSenderLabel(), "파일 첨부 진입: 마스킹, 다운로드 권한, 보존기간 확인 후 업로드합니다.", auditId, formatChatTime()]);
-  auditRows.unshift([auditId, "채팅 파일 첨부 진입", "현재 사용자", room.title, "진입 기록", "마스킹/다운로드 권한/보존기간 안내"]);
+  const fileLabel = `${file.name} (${formatFileSize(file.size)})`;
+  room.messages.push([getCurrentSenderLabel(), `파일 첨부: ${fileLabel}`, auditId, formatChatTime()]);
+  auditRows.unshift([auditId, "채팅 파일 첨부", "현재 사용자", room.title, "첨부 기록", `${fileLabel} · 마스킹/다운로드 권한/보존기간 확인 필요`]);
   auditRows.splice(20);
   renderChats();
   renderAudit();
-  openCommandPanel("attach", `${room.title} 파일 첨부`);
-  showToast(`${room.title} 파일 첨부 진입 로그를 기록했습니다.`);
+  showToast(`${room.title}에 ${file.name} 첨부 기록을 남겼습니다.`);
 }
 
 function sendTeamMessage() {
@@ -1381,8 +1393,6 @@ document.addEventListener("click", (event) => {
 
   if (event.target.closest("#refreshButton")) showToast("ETBS OS 화면 데이터를 새로고침했습니다.");
   if (event.target.closest("#attachButton")) openTeamAttachment();
-  if (event.target.closest("#createDmButton")) createTeamRoom("dm");
-  if (event.target.closest("#createGroupButton")) createTeamRoom("group");
   if (event.target.closest("#saveSalesTargets")) saveSalesTargets();
   if (event.target.closest("#saveProductInventory")) saveProductInventory();
   if (event.target.closest("#saveFinanceInputs")) saveFinanceInputs();
@@ -1447,6 +1457,13 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  const attachmentInput = event.target.closest("#teamAttachmentInput");
+  if (attachmentInput) {
+    handleTeamAttachment(attachmentInput.files[0]);
+    attachmentInput.value = "";
+    return;
+  }
+
   const memberInput = event.target.closest("[data-team-member]");
   if (!memberInput) return;
   selectedTeamMemberIds = Array.from(document.querySelectorAll("[data-team-member]:checked")).map((input) => input.dataset.teamMember);

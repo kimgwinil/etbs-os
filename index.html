@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ETBS OS</title>
-    <link rel="stylesheet" href="./styles.css?v=20260608-team-room-copy" />
+    <link rel="stylesheet" href="./styles.css?v=20260608-team-attach" />
   </head>
   <body>
     <div class="app-shell">
@@ -305,10 +305,11 @@
       <div class="popup-header">
         <div>
           <h2>직원 채팅방</h2>
-          <p>DM과 단톡방을 만들고 대화 로그와 파일 첨부 이력을 감사 기준으로 보존합니다.</p>
+          <p>직원을 선택해 대화방으로 이동하고 메시지와 파일 첨부 이력을 감사 기준으로 보존합니다.</p>
         </div>
         <div class="popup-actions">
           <button class="secondary-button" type="button" id="attachButton">파일 첨부</button>
+          <input class="visually-hidden" id="teamAttachmentInput" type="file" />
           <button class="icon-button" type="button" data-chat-close="team" title="닫기">×</button>
         </div>
       </div>
@@ -324,14 +325,10 @@
           <div class="team-sidebar-section">
             <div class="section-mini-header">
               <strong>팀원 선택</strong>
-              <span>DM/단톡방</span>
+              <span>선택 즉시 이동</span>
             </div>
             <div class="member-picker" id="teamMemberPicker"></div>
             <div class="participant-summary" id="teamSelectedParticipants"></div>
-            <div class="team-room-actions">
-              <button class="secondary-button" type="button" id="createDmButton">DM 생성</button>
-              <button class="primary-button" type="button" id="createGroupButton">단톡방 생성</button>
-            </div>
           </div>
         </aside>
         <section class="team-chat-main" aria-label="선택된 채팅방">
@@ -396,6 +393,6 @@
     </section>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=20260608-team-room-copy"></script>
+    <script src="./app.js?v=20260608-team-attach"></script>
   </body>
 </html>
