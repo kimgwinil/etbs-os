@@ -899,14 +899,41 @@ function getSelectedChatMembers() {
   return selectedTeamMemberIds;
 }
 
+function normalizeMemberIds(memberIds) {
+  return [...memberIds].sort().join("|");
+}
+
+function findTeamRoomByParticipants(type, participantIds) {
+  const targetKey = normalizeMemberIds(participantIds);
+  return teamRooms.find((room) => room.type === type && normalizeMemberIds(room.participants) === targetKey);
+}
+
+function enterSelectedTeamRoom() {
+  const selected = getSelectedChatMembers();
+  if (selected.length === 0) {
+    renderTeamMembers();
+    showToast("팀원을 선택하면 기존 대화방 또는 새 채팅방으로 이동합니다.");
+    return;
+  }
+  const type = selected.length === 1 ? "dm" : "group";
+  createTeamRoom(type);
+}
+
 function createTeamRoom(type) {
   const selected = getSelectedChatMembers();
   if (type === "dm" && selected.length !== 1) {
-    showToast("개인방은 팀원 1명을 선택해야 합니다.");
+    showToast("DM은 팀원 1명을 선택해야 합니다.");
     return;
   }
   if (type === "group" && selected.length < 2) {
     showToast("단톡방은 팀원 2명 이상을 선택해야 합니다.");
+    return;
+  }
+  const existingRoom = findTeamRoomByParticipants(type, selected);
+  if (existingRoom) {
+    activeTeamRoomId = existingRoom.id;
+    renderChats();
+    showToast(`${existingRoom.title} 기존 채팅방으로 이동했습니다.`);
     return;
   }
   const title =
@@ -919,7 +946,7 @@ function createTeamRoom(type) {
     type,
     title,
     participants: [...selected],
-    messages: [[getCurrentSenderLabel(), `${type === "dm" ? "개인방" : "단톡방"}을 생성했습니다.`, auditId, formatChatTime()]]
+    messages: [[getCurrentSenderLabel(), `${type === "dm" ? "DM" : "단톡방"}을 생성했습니다.`, auditId, formatChatTime()]]
   };
   teamRooms.unshift(room);
   activeTeamRoomId = room.id;
@@ -1392,7 +1419,7 @@ document.addEventListener("change", (event) => {
   const memberInput = event.target.closest("[data-team-member]");
   if (!memberInput) return;
   selectedTeamMemberIds = Array.from(document.querySelectorAll("[data-team-member]:checked")).map((input) => input.dataset.teamMember);
-  renderTeamMembers();
+  enterSelectedTeamRoom();
 });
 
 function openChatPopup(type) {
