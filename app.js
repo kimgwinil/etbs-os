@@ -924,6 +924,12 @@ function enterDirectTeamMemberRoom(memberId) {
   createTeamRoom("dm");
 }
 
+function getTeamRoomOpenMessage(type, title) {
+  return type === "dm"
+    ? `${title}님과의 DM 채팅방을 열었습니다.`
+    : `${title} 단톡방을 열었습니다.`;
+}
+
 function createTeamRoom(type) {
   const selected = getSelectedChatMembers();
   if (type === "dm" && selected.length !== 1) {
@@ -951,7 +957,7 @@ function createTeamRoom(type) {
     type,
     title,
     participants: [...selected],
-    messages: [[getCurrentSenderLabel(), `${type === "dm" ? "DM" : "단톡방"}을 생성했습니다.`, auditId, formatChatTime()]]
+    messages: [[getCurrentSenderLabel(), getTeamRoomOpenMessage(type, title), auditId, formatChatTime()]]
   };
   teamRooms.unshift(room);
   activeTeamRoomId = room.id;
