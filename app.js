@@ -17,6 +17,7 @@ const familyNames = ["김", "박", "이", "최", "정", "강", "조", "윤", "�
 const givenNames = ["서연", "지훈", "도윤", "민재", "하린", "나은", "윤서", "도현", "서진", "지우"];
 const statuses = ["정상", "주의", "개선"];
 const contracts = ["운영중", "갱신 30일 전", "갱신 74일 전", "계약 검토", "신규 온보딩", "조건 재협상"];
+const MAX_TEAM_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 function padId(prefix, index) {
   return `${prefix}-${String(index).padStart(3, "0")}`;
@@ -359,8 +360,7 @@ const commandTemplates = {
   employeeRow: ["임직원 상세", "임직원 상세 패널을 열었습니다.", "개인정보 원문은 표시하지 않고 권한/결재/입퇴사 상태만 확인합니다."],
   auditRow: ["감사 로그 상세", "감사 로그 상세를 열었습니다.", "이벤트, 행위자, 대상, 통제 상태를 확인합니다."],
   pipelineItem: ["파이프라인 상세", "영업 파이프라인 항목을 열었습니다.", "고객사 기회 단계와 다음 액션을 검토합니다."],
-  approval: ["결재 처리", "승인/반려/보류 결재 작업을 선택했습니다.", "결재권한과 결재라인 기준으로 처리됩니다."],
-  attach: ["파일 첨부", "파일 첨부 요청을 기록했습니다.", "첨부파일은 마스킹, 다운로드 권한, 보존기간 검토 대상입니다."]
+  approval: ["결재 처리", "승인/반려/보류 결재 작업을 선택했습니다.", "결재권한과 결재라인 기준으로 처리됩니다."]
 };
 
 const formConfigs = {
@@ -886,19 +886,40 @@ function renderTeamRoomMessages() {
     .join("");
 }
 
-function renderTeamMessage([sender, message, audit, time]) {
+function renderTeamMessage([sender, message, audit, time, attachments = []]) {
   const isMine = sender.includes(currentChatUser.name) || sender.includes("현재 사용자");
   return `
     <article class="team-message ${isMine ? "mine" : "theirs"}">
       <strong class="message-sender">${escapeHtml(sender)}</strong>
       <div class="message-row">
-        <div class="message-bubble">${escapeHtml(message)}</div>
+        <div class="message-bubble">
+          <span>${escapeHtml(message)}</span>
+          ${renderTeamAttachments(attachments)}
+        </div>
         <div class="message-meta">
           <span>${escapeHtml(time || "시간 미기록")}</span>
           <span>${escapeHtml(audit)}</span>
         </div>
       </div>
     </article>
+  `;
+}
+
+function renderTeamAttachments(attachments) {
+  if (!attachments.length) return "";
+  return `
+    <div class="attachment-stack">
+      ${attachments
+        .map(
+          (attachment) => `
+            <a class="attachment-chip" href="${escapeHtml(attachment.url)}" download="${escapeHtml(attachment.name)}">
+              <strong>${escapeHtml(attachment.name)}</strong>
+              <span>${escapeHtml(attachment.sizeLabel)}</span>
+            </a>
+          `
+        )
+        .join("")}
+    </div>
   `;
 }
 
@@ -1225,7 +1246,7 @@ function openCommandPanel(command, label = "") {
   renderCommandForm(command);
   document.querySelector("#commandNotice").textContent = template[2];
   document.querySelector("#commandPanel").classList.add("active");
-  if (formConfigs[command] || command === "attach") {
+  if (formConfigs[command]) {
     auditRows.unshift([auditId, template[0], "현재 사용자", label || "ETBS OS", "요청 생성", "저장 시 확정"]);
     auditRows.splice(20);
     renderAudit();
@@ -1349,21 +1370,36 @@ function saveEmployee(values) {
   renderEmployees();
 }
 
-function openTeamAttachment() {
-  document.querySelector("#teamAttachmentInput").click();
-}
-
-function handleTeamAttachment(file) {
-  if (!file) return;
+function handleTeamAttachment(files) {
+  const attachmentFiles = Array.from(files || []);
+  if (!attachmentFiles.length) return;
+  const totalBytes = attachmentFiles.reduce((sum, file) => sum + file.size, 0);
   const room = getActiveTeamRoom();
   const auditId = `AUD-FILE-${Date.now().toString().slice(-6)}`;
-  const fileLabel = `${file.name} (${formatFileSize(file.size)})`;
-  room.messages.push([getCurrentSenderLabel(), `파일 첨부: ${fileLabel}`, auditId, formatChatTime()]);
-  auditRows.unshift([auditId, "채팅 파일 첨부", "현재 사용자", room.title, "첨부 기록", `${fileLabel} · 마스킹/다운로드 권한/보존기간 확인 필요`]);
+  if (totalBytes > MAX_TEAM_ATTACHMENT_BYTES) {
+    auditRows.unshift([auditId, "채팅 파일 첨부 차단", "현재 사용자", room.title, "20MB 초과", `요청 용량 ${formatFileSize(totalBytes)} · 최대 20MB`]);
+    auditRows.splice(20);
+    renderAudit();
+    showToast(`첨부 용량은 한 번에 최대 20MB입니다. 현재 ${formatFileSize(totalBytes)}입니다.`);
+    return;
+  }
+  const attachments = attachmentFiles.map((file) => ({
+    name: file.name,
+    sizeLabel: formatFileSize(file.size),
+    url: URL.createObjectURL(file)
+  }));
+  const fileSummary = attachments.map((file) => `${file.name} (${file.sizeLabel})`).join(", ");
+  room.messages.push([getCurrentSenderLabel(), `파일 첨부 ${attachments.length}건`, auditId, formatChatTime(), attachments]);
+  auditRows.unshift([auditId, "채팅 파일 첨부", "현재 사용자", room.title, "첨부 기록", `${fileSummary} · 마스킹/다운로드 권한/보존기간 확인 필요`]);
   auditRows.splice(20);
   renderChats();
   renderAudit();
-  showToast(`${room.title}에 ${file.name} 첨부 기록을 남겼습니다.`);
+  showToast(`${room.title}에 파일 ${attachments.length}건을 첨부했습니다.`);
+}
+
+function setTeamDropState(isActive) {
+  document.querySelector("#teamDropZone")?.classList.toggle("active", isActive);
+  document.querySelector("#teamPopup")?.classList.toggle("drag-active", isActive);
 }
 
 function sendTeamMessage() {
@@ -1392,7 +1428,6 @@ document.addEventListener("click", (event) => {
   }
 
   if (event.target.closest("#refreshButton")) showToast("ETBS OS 화면 데이터를 새로고침했습니다.");
-  if (event.target.closest("#attachButton")) openTeamAttachment();
   if (event.target.closest("#saveSalesTargets")) saveSalesTargets();
   if (event.target.closest("#saveProductInventory")) saveProductInventory();
   if (event.target.closest("#saveFinanceInputs")) saveFinanceInputs();
@@ -1457,17 +1492,34 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("change", (event) => {
-  const attachmentInput = event.target.closest("#teamAttachmentInput");
-  if (attachmentInput) {
-    handleTeamAttachment(attachmentInput.files[0]);
-    attachmentInput.value = "";
-    return;
-  }
-
   const memberInput = event.target.closest("[data-team-member]");
   if (!memberInput) return;
   selectedTeamMemberIds = Array.from(document.querySelectorAll("[data-team-member]:checked")).map((input) => input.dataset.teamMember);
   enterSelectedTeamRoom();
+});
+
+document.addEventListener("dragenter", (event) => {
+  if (!event.target.closest("#teamPopup")) return;
+  event.preventDefault();
+  setTeamDropState(true);
+});
+
+document.addEventListener("dragover", (event) => {
+  if (!event.target.closest("#teamPopup")) return;
+  event.preventDefault();
+  setTeamDropState(true);
+});
+
+document.addEventListener("dragleave", (event) => {
+  if (!event.target.closest("#teamPopup") || event.relatedTarget?.closest?.("#teamPopup")) return;
+  setTeamDropState(false);
+});
+
+document.addEventListener("drop", (event) => {
+  if (!event.target.closest("#teamPopup")) return;
+  event.preventDefault();
+  setTeamDropState(false);
+  handleTeamAttachment(event.dataTransfer.files);
 });
 
 document.addEventListener("keydown", (event) => {
