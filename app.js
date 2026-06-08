@@ -31,6 +31,10 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function formatChatTime(date = new Date()) {
+  return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
 function makeCustomer(index) {
   const prefix = companyPrefixes[index % companyPrefixes.length];
   const suffix = companySuffixes[Math.floor(index / companyPrefixes.length) % companySuffixes.length];
@@ -191,7 +195,7 @@ const chatMembers = [
   { id: "EMP-006", name: "HR 관리자", team: "HR팀", role: "결재권한 관리자" }
 ];
 
-const currentChatUser = { id: "ME", name: "현재 사용자", team: "운영팀", role: "작성자" };
+const currentChatUser = { id: "ME", name: "김권일", team: "PM", role: "작성자" };
 
 const teamRooms = [
   {
@@ -200,8 +204,8 @@ const teamRooms = [
     title: "배송 지연 대응방",
     participants: ["EMP-002", "EMP-003", "EMP-004"],
     messages: [
-      ["운영팀 박지훈", "배송 지연 건은 운송사 API 재처리 후 결과 남기겠습니다.", "AUD-CHAT-772"],
-      ["CS팀 이도윤", "고객 문의 파일은 마스킹본만 공유하겠습니다.", "AUD-FILE-128"]
+      ["운영팀 박지훈", "배송 지연 건은 운송사 API 재처리 후 결과 남기겠습니다.", "AUD-CHAT-772", "09:12"],
+      ["CS팀 이도윤", "고객 문의 파일은 마스킹본만 공유하겠습니다.", "AUD-FILE-128", "09:18"]
     ]
   },
   {
@@ -209,7 +213,7 @@ const teamRooms = [
     type: "dm",
     title: "김서연",
     participants: ["EMP-001"],
-    messages: [["정산팀 김서연", "한빛전자 정산 증적 4건 승인 대기입니다.", "AUD-CHAT-771"]]
+    messages: [["정산팀 김서연", "한빛전자 정산 증적 4건 승인 대기입니다.", "AUD-CHAT-771", "08:54"]]
   }
 ];
 
@@ -778,10 +782,10 @@ function renderChats() {
     .slice(-8)
     .reverse()
     .map(
-      ([sender, message, audit]) => `
+      ([sender, message, audit, time]) => `
         <div class="audit-item">
           <strong>${escapeHtml(audit)}</strong>
-          <span>${escapeHtml(activeRoom.title)} · ${escapeHtml(sender)}</span>
+          <span>${escapeHtml(activeRoom.title)} · ${escapeHtml(sender)} · ${escapeHtml(time || "시간 미기록")}</span>
           <p>${escapeHtml(message)}</p>
         </div>
       `
@@ -815,6 +819,10 @@ function getRoomMemberIds(room) {
   return [currentChatUser.id, ...room.participants];
 }
 
+function getCurrentSenderLabel() {
+  return `${currentChatUser.team} ${currentChatUser.name}`;
+}
+
 function renderTeamRooms() {
   document.querySelector("#teamRoomCount").textContent = `${teamRooms.length}개`;
   document.querySelector("#teamRoomList").innerHTML = teamRooms
@@ -824,7 +832,7 @@ function renderTeamRooms() {
         <button class="team-room-item ${room.id === activeTeamRoomId ? "active" : ""}" type="button" data-team-room="${room.id}">
           <span>${room.type === "dm" ? "DM" : "단톡방"} · ${room.participants.length + 1}명</span>
           <strong>${escapeHtml(room.title)}</strong>
-          <em>${latest ? escapeHtml(latest[1]) : "새 채팅방"}</em>
+          <em>${latest ? `${escapeHtml(latest[3] || "시간 미기록")} · ${escapeHtml(latest[1])}` : "새 채팅방"}</em>
         </button>
       `;
     })
@@ -867,13 +875,24 @@ function renderTeamRoomMessages() {
     .map((member) => `<span class="participant-chip">${escapeHtml(member.team)} ${escapeHtml(member.name)}</span>`)
     .join("");
   document.querySelector("#teamChat").innerHTML = room.messages
-    .map(([sender, message, audit]) =>
-      renderMessage([
-        sender.includes("현재 사용자") ? "user" : "assistant",
-        `<b>${escapeHtml(sender)}</b><br>${escapeHtml(message)}<small>${escapeHtml(audit)}</small>`
-      ])
-    )
+    .map(renderTeamMessage)
     .join("");
+}
+
+function renderTeamMessage([sender, message, audit, time]) {
+  const isMine = sender.includes(currentChatUser.name) || sender.includes("현재 사용자");
+  return `
+    <article class="team-message ${isMine ? "mine" : "theirs"}">
+      <strong class="message-sender">${escapeHtml(sender)}</strong>
+      <div class="message-row">
+        <div class="message-bubble">${escapeHtml(message)}</div>
+        <div class="message-meta">
+          <span>${escapeHtml(time || "시간 미기록")}</span>
+          <span>${escapeHtml(audit)}</span>
+        </div>
+      </div>
+    </article>
+  `;
 }
 
 function getSelectedChatMembers() {
@@ -900,7 +919,7 @@ function createTeamRoom(type) {
     type,
     title,
     participants: [...selected],
-    messages: [["현재 사용자", `${type === "dm" ? "개인방" : "단톡방"}을 생성했습니다.`, auditId]]
+    messages: [[getCurrentSenderLabel(), `${type === "dm" ? "개인방" : "단톡방"}을 생성했습니다.`, auditId, formatChatTime()]]
   };
   teamRooms.unshift(room);
   activeTeamRoomId = room.id;
@@ -1288,7 +1307,7 @@ function saveEmployee(values) {
 function openTeamAttachment() {
   const room = getActiveTeamRoom();
   const auditId = `AUD-FILE-${Date.now().toString().slice(-6)}`;
-  room.messages.push(["현재 사용자", "파일 첨부 진입: 마스킹, 다운로드 권한, 보존기간 확인 후 업로드합니다.", auditId]);
+  room.messages.push([getCurrentSenderLabel(), "파일 첨부 진입: 마스킹, 다운로드 권한, 보존기간 확인 후 업로드합니다.", auditId, formatChatTime()]);
   auditRows.unshift([auditId, "채팅 파일 첨부 진입", "현재 사용자", room.title, "진입 기록", "마스킹/다운로드 권한/보존기간 안내"]);
   auditRows.splice(20);
   renderChats();
@@ -1409,7 +1428,7 @@ document.querySelector("#teamSend").addEventListener("click", () => {
   if (!input.value.trim()) return;
   const room = getActiveTeamRoom();
   const auditId = `AUD-CHAT-${Date.now().toString().slice(-6)}`;
-  room.messages.push(["현재 사용자", input.value.trim(), auditId]);
+  room.messages.push([getCurrentSenderLabel(), input.value.trim(), auditId, formatChatTime()]);
   auditRows.unshift([auditId, "채팅 메시지 전송", "현재 사용자", room.title, "전송 완료", "채팅 로그 보존"]);
   auditRows.splice(20);
   input.value = "";

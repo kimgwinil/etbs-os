@@ -948,6 +948,68 @@ tr[data-command]:hover {
   margin-top: 5px;
 }
 
+.team-message {
+  max-width: 78%;
+  display: grid;
+  gap: 4px;
+}
+
+.team-message.theirs {
+  justify-self: start;
+}
+
+.team-message.mine {
+  justify-self: end;
+  justify-items: end;
+  text-align: right;
+}
+
+.message-sender {
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.team-message.mine .message-row {
+  flex-direction: row-reverse;
+}
+
+.message-bubble {
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #d9e2e4;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.team-message.mine .message-bubble {
+  background: #fee500;
+  border-color: #ead200;
+}
+
+.message-meta {
+  display: grid;
+  gap: 3px;
+  min-width: 74px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.15;
+  text-align: left;
+}
+
+.team-message.mine .message-meta {
+  text-align: right;
+}
+
 .composer {
   display: grid;
   grid-template-columns: 1fr auto;
