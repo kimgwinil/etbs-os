@@ -4,6 +4,7 @@ const navItems = [
   ["products", "판매상품", "◫"],
   ["logistics", "배송/입출고", "⇄"],
   ["pipeline", "영업 파이프라인", "◇"],
+  ["approvals", "결재관리", "✓"],
   ["settings", "설정", "⚙"]
 ];
 
@@ -113,6 +114,7 @@ const productFinanceRecords = products.slice(0, 24).map((product, index) => {
   const salesUnitPrice = 32000 + ((index * 7300) % 128000);
   const purchaseUnitPrice = Math.round(salesUnitPrice * (0.54 + ((index % 5) * 0.035)));
   const soldQuantity = 80 + ((index * 17) % 220);
+  const salesStatus = index % 4 === 0 ? "견적" : "매출처리 완료";
   return {
     id: `PFIN-${String(index + 1).padStart(3, "0")}`,
     productName: product[0],
@@ -120,24 +122,45 @@ const productFinanceRecords = products.slice(0, 24).map((product, index) => {
     customerName: product[2],
     salesUnitPrice,
     purchaseUnitPrice,
-    soldQuantity
+    soldQuantity,
+    productCostRate: profitCostSettings.productCostRate,
+    sellingAdminRate: profitCostSettings.sellingAdminRate,
+    generalAdminRate: profitCostSettings.generalAdminRate,
+    salesStatus
   };
 });
 
 function classifyFinancialRecords() {
-  const revenue = productFinanceRecords.reduce((sum, record) => sum + record.salesUnitPrice * record.soldQuantity, 0);
-  const purchase = productFinanceRecords.reduce((sum, record) => sum + record.purchaseUnitPrice * record.soldQuantity, 0);
+  const completedRecords = productFinanceRecords.filter((record) => record.salesStatus === "매출처리 완료");
+  const revenue = completedRecords.reduce((sum, record) => sum + record.salesUnitPrice * record.soldQuantity, 0);
+  const purchase = completedRecords.reduce((sum, record) => sum + record.purchaseUnitPrice * record.soldQuantity, 0);
   const classified = {
     revenue,
     purchase,
-    product_cost: Math.round(revenue * profitCostSettings.productCostRate),
-    selling_admin: Math.round(revenue * profitCostSettings.sellingAdminRate),
-    general_admin: Math.round(revenue * profitCostSettings.generalAdminRate)
+    product_cost: completedRecords.reduce((sum, record) => sum + getRecordCost(record, "productCostRate"), 0),
+    selling_admin: completedRecords.reduce((sum, record) => sum + getRecordCost(record, "sellingAdminRate"), 0),
+    general_admin: completedRecords.reduce((sum, record) => sum + getRecordCost(record, "generalAdminRate"), 0)
   };
   classified.totalCost = classified.purchase + classified.product_cost + classified.selling_admin + classified.general_admin;
   classified.operatingProfit = classified.revenue - classified.totalCost;
   classified.marginRate = classified.revenue ? classified.operatingProfit / classified.revenue : 0;
   return classified;
+}
+
+function getRecordRevenue(record) {
+  return record.salesUnitPrice * record.soldQuantity;
+}
+
+function getRecordPurchase(record) {
+  return record.purchaseUnitPrice * record.soldQuantity;
+}
+
+function getRecordCost(record, rateKey) {
+  return Math.round(getRecordRevenue(record) * record[rateKey]);
+}
+
+function getRecordOperatingProfit(record) {
+  return getRecordRevenue(record) - getRecordPurchase(record) - getRecordCost(record, "productCostRate") - getRecordCost(record, "sellingAdminRate") - getRecordCost(record, "generalAdminRate");
 }
 
 let dashboardMetrics = [];
@@ -256,6 +279,13 @@ const approvalLines = [
   ["상품 승인", "상품팀 최민재", "상품리더", "승인/반려/보류"],
   ["고객 계약", "AM 김나은", "영업리더", "승인/반려/보류"],
   ["결재권한 변경", "HR 관리자", "보안책임자", "승인/반려/보류"]
+];
+
+const approvalDocuments = [
+  { id: "APR-101", title: "복지 포인트 01 판매가격 변경", requester: "상품팀 최민재", approver: "김권일", nextApprover: "상품리더", finalApprover: "PM 김권일", menu: "판매상품", amount: 18400000, status: "승인대기", reason: "판매가격 변경 승인 필요" },
+  { id: "APR-102", title: "한빛전자 고객 계약 조건 변경", requester: "영업팀 김나은", approver: "김권일", nextApprover: "재무리더", finalApprover: "PM 김권일", menu: "고객관리", amount: 42000000, status: "승인대기", reason: "계약 조건 재협상" },
+  { id: "APR-103", title: "입사등록 계정 활성화", requester: "HR팀 HR 관리자", approver: "김권일", nextApprover: "보안책임자", finalApprover: "PM 김권일", menu: "결재/입사등록", amount: 0, status: "보류", reason: "결재라인 보완 필요" },
+  { id: "APR-104", title: "배송 지연 보상 정산", requester: "운영팀 박지훈", approver: "김권일", nextApprover: "재무리더", finalApprover: "PM 김권일", menu: "배송/입출고", amount: 3600000, status: "승인완료", reason: "고객사 SLA 대응" }
 ];
 
 const settingsHub = [
@@ -465,6 +495,7 @@ function renderDashboard() {
     )
     .join("");
 
+  renderMarginTrendChart();
   document.querySelector("#workloadBars").innerHTML = workloadBars
     .map(
       ([label, value, color]) => `
@@ -478,7 +509,56 @@ function renderDashboard() {
 
   renderActionList("#dashboardActions", dashboardActions);
   renderFinanceInputs();
+  renderProductFinanceTable();
   renderRealtimeSales();
+}
+
+function renderMarginTrendChart() {
+  const values = monthLabels.map((month, index) => {
+    const actual = sumMonthly(index, "actual");
+    const target = sumMonthly(index, "target") || 1;
+    const rate = 12 + (actual / target) * 8 + (index % 3) * 0.9;
+    return { month, rate: Math.round(rate * 10) / 10 };
+  });
+  const width = 640;
+  const height = 220;
+  const left = 34;
+  const right = 620;
+  const top = 44;
+  const bottom = 190;
+  const min = Math.min(...values.map((item) => item.rate)) - 2;
+  const max = Math.max(...values.map((item) => item.rate)) + 2;
+  const points = values.map((item, index) => {
+    const x = left + ((right - left) / (values.length - 1)) * index;
+    const y = bottom - ((item.rate - min) / (max - min || 1)) * (bottom - top);
+    return { ...item, x: Math.round(x), y: Math.round(y) };
+  });
+  const linePath = points.map((point, index) => `${index === 0 ? "M" : "L"}${point.x} ${point.y}`).join(" ");
+  const areaPath = `${linePath} L${right} ${bottom} L${left} ${bottom} Z`;
+  document.querySelector("#marginTrendChart").innerHTML = `
+    <svg class="line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="1월부터 12월까지 월별 마진율 추이">
+      <defs>
+        <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#0f766e" stop-opacity="0.22" />
+          <stop offset="100%" stop-color="#0f766e" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      <path class="area-path" d="${areaPath}" />
+      <path class="line-path" d="${linePath}" />
+      <g class="chart-grid">
+        <line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" />
+        <line x1="${left}" y1="154" x2="${right}" y2="154" />
+        <line x1="${left}" y1="104" x2="${right}" y2="104" />
+        <line x1="${left}" y1="54" x2="${right}" y2="54" />
+      </g>
+      <g class="chart-labels">
+        ${points.map((point) => `<text x="${point.x - 10}" y="214">${point.month}</text>`).join("")}
+      </g>
+      <g class="chart-points">
+        ${points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="3"><title>${point.month} ${point.rate}%</title></circle>`).join("")}
+      </g>
+    </svg>
+  `;
 }
 
 function renderFinanceInputs() {
@@ -516,6 +596,84 @@ function renderFinanceInputs() {
     </div>
     <small>기준 변경 권한: ${profitCostSettings.authorizedRoles.join(", ")} · 현재 사용자 ${currentProfitCostUser.name}(${currentProfitCostUser.role}) · 산식 ${profitCostSettings.formulaVersion}</small>
   `;
+}
+
+function renderProductFinanceTable() {
+  document.querySelector("#productFinanceTable").innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>품목</th>
+          <th>상태</th>
+          <th>판매가격</th>
+          <th>매입가격</th>
+          <th>수량</th>
+          <th>제품원가율</th>
+          <th>판관비율</th>
+          <th>일반관리비율</th>
+          <th>예상 영업이익</th>
+          <th>처리</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${productFinanceRecords
+          .slice(0, 8)
+          .map((record, index) => renderProductFinanceRow(record, index))
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderProductFinanceRow(record, index) {
+  return `
+    <tr>
+      <td>${escapeHtml(record.productName)}</td>
+      <td><span class="status-pill ${record.salesStatus === "매출처리 완료" ? "active" : ""}">${record.salesStatus}</span></td>
+      <td><input class="finance-basis-input" data-finance-record="${index}" data-finance-field="salesUnitPrice" inputmode="numeric" value="${formatWon(record.salesUnitPrice)}" /></td>
+      <td><input class="finance-basis-input" data-finance-record="${index}" data-finance-field="purchaseUnitPrice" inputmode="numeric" value="${formatWon(record.purchaseUnitPrice)}" /></td>
+      <td><input class="finance-basis-input" data-finance-record="${index}" data-finance-field="soldQuantity" inputmode="numeric" value="${record.soldQuantity}" /></td>
+      <td><input class="finance-basis-input" data-finance-record="${index}" data-finance-field="productCostRate" inputmode="decimal" value="${formatPercent(record.productCostRate)}" /></td>
+      <td><input class="finance-basis-input" data-finance-record="${index}" data-finance-field="sellingAdminRate" inputmode="decimal" value="${formatPercent(record.sellingAdminRate)}" /></td>
+      <td><input class="finance-basis-input" data-finance-record="${index}" data-finance-field="generalAdminRate" inputmode="decimal" value="${formatPercent(record.generalAdminRate)}" /></td>
+      <td><strong>${formatWon(getRecordOperatingProfit(record))}</strong></td>
+      <td><button class="secondary-button compact-button" type="button" data-complete-sale="${index}">매출처리 완료</button></td>
+    </tr>
+  `;
+}
+
+function saveProductFinanceBasis() {
+  document.querySelectorAll(".finance-basis-input").forEach((input) => {
+    const record = productFinanceRecords[Number(input.dataset.financeRecord)];
+    const field = input.dataset.financeField;
+    if (!record || !field) return;
+    if (field.endsWith("Rate")) {
+      record[field] = parseNumberRate(input.value);
+      input.value = formatPercent(record[field]);
+      return;
+    }
+    record[field] = parseWon(input.value);
+    input.value = field === "soldQuantity" ? record[field] : formatWon(record[field]);
+  });
+  const auditId = `AUD-PROFIT-${Date.now().toString().slice(-6)}`;
+  auditRows.unshift([auditId, "품목별 영업이익 기준 저장", currentProfitCostUser.name, "대시보드/재무", "저장 완료", "판매가격/매입가격/비용율 기준 재계산"]);
+  auditRows.splice(20);
+  renderDashboard();
+  renderAudit();
+  showToast("품목별 기준값을 저장하고 영업이익을 재계산했습니다.");
+}
+
+function completeProductSale(recordIndex) {
+  saveProductFinanceBasis();
+  const record = productFinanceRecords[recordIndex];
+  if (!record) return;
+  record.salesStatus = "매출처리 완료";
+  const auditId = `AUD-SALE-${Date.now().toString().slice(-6)}`;
+  auditRows.unshift([auditId, "매출처리 완료", currentProfitCostUser.name, record.productName, "완료", `영업이익 ${formatWon(getRecordOperatingProfit(record))} 대시보드 반영`]);
+  auditRows.splice(20);
+  renderDashboard();
+  renderAudit();
+  showToast(`${record.productName} 매출처리 완료 후 영업이익을 반영했습니다.`);
 }
 
 function renderRealtimeSales() {
@@ -1070,6 +1228,87 @@ function renderApprovalLines() {
   renderDataTable("#approvalLineTable", ["결재 유형", "요청자", "승인자", "처리 메뉴"], approvalLines);
 }
 
+function renderApprovalManagement(activeId = approvalDocuments[0]?.id) {
+  const statusCounts = ["승인대기", "승인완료", "반려", "보류"].map((status) => [status, approvalDocuments.filter((doc) => doc.status === status).length]);
+  document.querySelector("#approvalSummary").innerHTML = `
+    ${statusCounts.map(([status, count]) => `<div><span>${status}</span><strong>${count}건</strong></div>`).join("")}
+    <div><span>처리 기준</span><strong>승인/반려/보류 즉시 로그</strong></div>
+  `;
+  document.querySelector("#approvalRequestTable").innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>문건 ID</th>
+          <th>제목</th>
+          <th>요청자</th>
+          <th>처리 메뉴</th>
+          <th>상태</th>
+          <th>현재 결재자</th>
+          <th>다음 결재자</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${approvalDocuments
+          .map(
+            (doc) => `
+              <tr class="${doc.id === activeId ? "selected-row" : ""}" data-approval-document="${doc.id}">
+                <td>${doc.id}</td>
+                <td>${escapeHtml(doc.title)}</td>
+                <td>${escapeHtml(doc.requester)}</td>
+                <td>${escapeHtml(doc.menu)}</td>
+                <td><span class="status-pill ${doc.status === "승인완료" ? "active" : ""}">${doc.status}</span></td>
+                <td>${escapeHtml(doc.approver)}</td>
+                <td>${escapeHtml(doc.nextApprover)}</td>
+              </tr>
+            `
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+  renderApprovalDetail(activeId);
+}
+
+function renderApprovalDetail(activeId) {
+  const doc = approvalDocuments.find((item) => item.id === activeId) || approvalDocuments[0];
+  if (!doc) return;
+  document.querySelector("#approvalDetail").innerHTML = `
+    <div class="panel-header compact">
+      <div>
+        <span class="status-pill">${doc.status}</span>
+        <h2>${escapeHtml(doc.title)}</h2>
+        <p>${doc.id} · ${escapeHtml(doc.menu)} · 상신자 ${escapeHtml(doc.requester)}</p>
+      </div>
+    </div>
+    <div class="detail-grid">
+      <div><span>현재 결재자</span><strong>${escapeHtml(doc.approver)}</strong></div>
+      <div><span>다음 결재자</span><strong>${escapeHtml(doc.nextApprover)}</strong></div>
+      <div><span>최종 결재권자</span><strong>${escapeHtml(doc.finalApprover)}</strong></div>
+      <div><span>처리 금액</span><strong>${doc.amount ? formatWon(doc.amount) : "금액 없음"}</strong></div>
+      <div><span>상신/반려/보류 사유</span><strong>${escapeHtml(doc.reason)}</strong></div>
+      <div><span>다음 상태</span><strong>승인완료 / 반려 / 보류</strong></div>
+    </div>
+    <div class="approval-actions">
+      <button class="primary-button" type="button" data-approval-action="승인완료" data-approval-id="${doc.id}">승인</button>
+      <button class="secondary-button" type="button" data-approval-action="반려" data-approval-id="${doc.id}">반려</button>
+      <button class="secondary-button" type="button" data-approval-action="보류" data-approval-id="${doc.id}">보류</button>
+    </div>
+    <div class="notice">결재 처리 시 상태, 결재자, 대상 메뉴, 사유가 감사로그에 남습니다.</div>
+  `;
+}
+
+function processApprovalDocument(docId, nextStatus) {
+  const doc = approvalDocuments.find((item) => item.id === docId);
+  if (!doc) return;
+  doc.status = nextStatus;
+  const auditId = `AUD-APR-${Date.now().toString().slice(-6)}`;
+  auditRows.unshift([auditId, "결재 처리", currentProfitCostUser.name, doc.title, nextStatus, `${doc.menu} · ${doc.reason}`]);
+  auditRows.splice(20);
+  renderApprovalManagement(doc.id);
+  renderAudit();
+  showToast(`${doc.title} 문건을 ${nextStatus} 상태로 처리했습니다.`);
+}
+
 function renderSettingsHub() {
   document.querySelector("#settingsHub").innerHTML = settingsHub
     .map(
@@ -1497,8 +1736,18 @@ document.addEventListener("click", (event) => {
 
   if (event.target.closest("#refreshButton")) showToast("ETBS OS 화면 데이터를 새로고침했습니다.");
   if (event.target.closest("#openFinanceSettings")) openSettingsModal(0);
+  if (event.target.closest("#saveProductFinanceBasis")) saveProductFinanceBasis();
   if (event.target.closest("#saveSalesTargets")) saveSalesTargets();
   if (event.target.closest("#saveProductInventory")) saveProductInventory();
+
+  const completeSaleButton = event.target.closest("[data-complete-sale]");
+  if (completeSaleButton) completeProductSale(Number(completeSaleButton.dataset.completeSale));
+
+  const approvalDocumentRow = event.target.closest("[data-approval-document]");
+  if (approvalDocumentRow) renderApprovalManagement(approvalDocumentRow.dataset.approvalDocument);
+
+  const approvalAction = event.target.closest("[data-approval-action]");
+  if (approvalAction) processApprovalDocument(approvalAction.dataset.approvalId, approvalAction.dataset.approvalAction);
 
   const memberOption = event.target.closest("[data-team-member-option]");
   if (memberOption && !event.target.closest("[data-team-member]")) {
@@ -1641,5 +1890,6 @@ renderPipeline();
 renderChats();
 renderEmployees();
 renderApprovalLines();
+renderApprovalManagement();
 renderSettingsHub();
 renderAudit();

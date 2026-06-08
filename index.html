@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ETBS OS</title>
-    <link rel="stylesheet" href="./styles.css?v=20260608-team-drag-attach" />
+    <link rel="stylesheet" href="./styles.css?v=20260608-profit-approval" />
   </head>
   <body>
     <div class="app-shell">
@@ -46,33 +46,10 @@
                   <h2>운영 처리량 마진 추이</h2>
                   <p>월별 업무 처리량, 마진율, 예외율을 함께 표시합니다.</p>
                 </div>
-                <span class="period-chip">최근 6개월</span>
+                <span class="period-chip">1월~12월</span>
               </div>
               <div class="chart-combo">
-                <svg class="line-chart" viewBox="0 0 640 220" role="img" aria-label="월별 마진율 추이">
-                  <defs>
-                    <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stop-color="#0f766e" stop-opacity="0.22" />
-                      <stop offset="100%" stop-color="#0f766e" stop-opacity="0" />
-                    </linearGradient>
-                  </defs>
-                  <path class="area-path" d="M34 164 L132 146 L230 151 L328 112 L426 92 L524 78 L620 66 L620 204 L34 204 Z" />
-                  <path class="line-path" d="M34 164 L132 146 L230 151 L328 112 L426 92 L524 78 L620 66" />
-                  <g class="chart-grid">
-                    <line x1="34" y1="204" x2="620" y2="204" />
-                    <line x1="34" y1="154" x2="620" y2="154" />
-                    <line x1="34" y1="104" x2="620" y2="104" />
-                    <line x1="34" y1="54" x2="620" y2="54" />
-                  </g>
-                  <g class="chart-labels">
-                    <text x="28" y="218">1월</text>
-                    <text x="126" y="218">2월</text>
-                    <text x="224" y="218">3월</text>
-                    <text x="322" y="218">4월</text>
-                    <text x="420" y="218">5월</text>
-                    <text x="518" y="218">6월</text>
-                  </g>
-                </svg>
+                <div id="marginTrendChart"></div>
                 <div class="bar-stack" id="workloadBars"></div>
               </div>
             </section>
@@ -91,12 +68,16 @@
               <div class="panel-header">
                 <div>
                   <h2>제품원가/판관비/일반관리비 기준</h2>
-                  <p>품목별 판매금액과 매입금액에 설정 권한자가 정한 비용 기준을 적용해 영업이익을 자동 산출합니다.</p>
+                  <p>품목별 판매가격, 매입가격, 비용 기준율과 매출처리 상태로 영업이익을 자동 산출합니다.</p>
                 </div>
-                <button class="secondary-button" type="button" id="openFinanceSettings">설정에서 기준 변경</button>
+                <div class="panel-actions">
+                  <button class="secondary-button" type="button" id="saveProductFinanceBasis">품목 기준 저장</button>
+                  <button class="secondary-button" type="button" id="openFinanceSettings">설정 권한 관리</button>
+                </div>
               </div>
               <div class="finance-inputs" id="financeInputs"></div>
               <div class="operating-profit-formula" id="operatingProfitFormula"></div>
+              <div class="finance-basis-table data-table" id="productFinanceTable"></div>
             </section>
 
             <section class="panel">
@@ -207,6 +188,22 @@
             <div class="sales-summary" id="salesSummary"></div>
             <div class="sales-table-wrap" id="salesPerformanceTable"></div>
           </section>
+        </section>
+
+        <section class="view" id="approvalsView" aria-label="결재관리">
+          <div class="split-layout">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>결재관리</h2>
+                  <p>승인, 반려, 보류 요청을 상태별로 처리합니다.</p>
+                </div>
+              </div>
+              <div class="approval-summary" id="approvalSummary"></div>
+              <div class="data-table" id="approvalRequestTable"></div>
+            </section>
+            <section class="panel detail" id="approvalDetail"></section>
+          </div>
         </section>
 
         <section class="view" id="settingsView" aria-label="설정">
@@ -390,6 +387,6 @@
     </section>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=20260608-team-drag-attach"></script>
+    <script src="./app.js?v=20260608-profit-approval"></script>
   </body>
 </html>

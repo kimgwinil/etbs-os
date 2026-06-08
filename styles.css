@@ -346,6 +346,12 @@ h3 {
   stroke-linecap: round;
 }
 
+.chart-points circle {
+  fill: var(--teal);
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
 .chart-grid line {
   stroke: #e3e8eb;
   stroke-width: 1;
@@ -465,6 +471,56 @@ h3 {
   gap: 4px;
   padding-top: 6px;
   border-top: 1px solid #c7ddda;
+}
+
+.finance-basis-table {
+  margin: 0 14px 14px;
+}
+
+.finance-basis-input {
+  width: 100%;
+  min-width: 92px;
+  text-align: right;
+}
+
+.compact-button {
+  min-height: 32px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.approval-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+
+.approval-summary div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcfc;
+  display: grid;
+  gap: 6px;
+}
+
+.approval-summary span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.approval-summary strong {
+  color: var(--teal);
+  font-size: 18px;
+}
+
+.selected-row {
+  background: #eef6f5;
+}
+
+.selected-row td {
+  border-top-color: #c7ddda;
 }
 
 .donut-wrap {
